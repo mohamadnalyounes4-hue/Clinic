@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'screens/splash_screen.dart';
+import 'core/router/app_router.dart';
 
 void main() {
   runApp(const NabadApp());
@@ -16,12 +16,8 @@ class NabadApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         useMaterial3: true,
       ),
-      initialRoute: '/',
-      routes: {
-        '/': (context) => const SplashScreen(),
-      },
+      initialRoute: AppRoutes.welcome,
+      onGenerateRoute: AppRouter.generateRoute,
     );
   }
 }
-
-
