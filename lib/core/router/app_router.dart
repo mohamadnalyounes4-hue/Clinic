@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:nabad/screens/account_type_screen.dart';
-import 'package:nabad/screens/doctor_login_screen.dart';
-import 'package:nabad/screens/health_information_screen.dart';
-import 'package:nabad/screens/welcome_interface.dart';
-import 'package:nabad/screens/otp_code_screen.dart';
-import 'package:nabad/screens/patient_login_screen.dart';
-import 'package:nabad/screens/register_screen.dart';
+import 'package:nabad/screens/before_home/account_type_screen.dart';
+import 'package:nabad/screens/before_home/doctor_login_screen.dart';
+import 'package:nabad/screens/before_home/health_information_screen.dart';
+import 'package:nabad/screens/before_home/welcome_interface.dart';
+import 'package:nabad/screens/before_home/otp_code_screen.dart';
+import 'package:nabad/screens/before_home/patient_login_screen.dart';
+import 'package:nabad/screens/before_home/register_screen.dart';
+import 'package:nabad/screens/HomePage_doctor/homepage_d.dart';
 
 class AppRoutes {
   static const String welcome = '/';
@@ -17,6 +18,7 @@ class AppRoutes {
   static const String otpCode = '/otp_code';
   static const String healthInformation = '/health_information';
   static const String login = '/login';
+  static const String doctorHome = '/doctor_home';
 }
 
 class AppRouter {
@@ -40,6 +42,8 @@ class AppRouter {
         return MaterialPageRoute(
           builder: (_) => const HealthInformationScreen(),
         );
+      case AppRoutes.doctorHome:
+        return MaterialPageRoute(builder: (_) => const DoctorHomePage());
       default:
         return MaterialPageRoute(
           builder: (_) => Scaffold(

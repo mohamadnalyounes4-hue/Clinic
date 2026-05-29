@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:nabad/core/router/app_router.dart';
 import 'package:nabad/core/theme/nabad_colors.dart';
+import 'package:nabad/screens/HomePage_patient/homepage_p.dart';
 import 'package:nabad/widgets/patient_login/country_code.dart';
 import 'package:nabad/widgets/patient_login/create_account_prompt.dart';
 import 'package:nabad/widgets/patient_login/patient_login_card.dart';
@@ -36,6 +37,10 @@ class _PatientLoginScreenState extends State<PatientLoginScreen> {
     final String fullPhoneNumber =
         '$_selectedCountryCode${_phoneController.text}';
     debugPrint('Patient login: $fullPhoneNumber, rememberMe: $_rememberMe');
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const PatientHomePage()),
+    );
   }
 
   String? _validatePhone(String? value) {
