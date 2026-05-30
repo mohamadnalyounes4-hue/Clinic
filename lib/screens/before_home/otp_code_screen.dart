@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:nabad/Cubits/user_cubit.dart';
+import 'package:nabad/Cubits/user_state.dart';
 import 'package:nabad/core/router/app_router.dart';
 import 'package:nabad/core/theme/nabad_colors.dart';
 import 'package:nabad/widgets/soft_ring.dart';
@@ -14,24 +17,17 @@ class OtpCodeScreen extends StatefulWidget {
 }
 
 class _OtpCodeScreenState extends State<OtpCodeScreen> {
-  final List<TextEditingController> _controllers = List.generate(
-    6,
-    (_) => TextEditingController(),
-  );
+  final List<TextEditingController> _controllers = List.generate(6, (_) => TextEditingController());
   final List<FocusNode> _focusNodes = List.generate(6, (_) => FocusNode());
 
   @override
   void dispose() {
-    for (final controller in _controllers) {
-      controller.dispose();
-    }
-    for (final focusNode in _focusNodes) {
-      focusNode.dispose();
-    }
+    for (final c in _controllers) c.dispose();
+    for (final f in _focusNodes) f.dispose();
     super.dispose();
   }
 
-  String get _code => _controllers.map((controller) => controller.text).join();
+  String get _code => _controllers.map((c) => c.text).join();
 
   void _verifyCode() {
     if (_code.length != 6) {
@@ -41,14 +37,15 @@ class _OtpCodeScreenState extends State<OtpCodeScreen> {
       return;
     }
 
-    if (_code != '000000') {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('رمز التحقق غير صحيح')));
-      return;
-    }
+    context.read<UserCubit>().verifyOtp(
+          email: widget.email ?? '',
+          code: _code,
+        );
+  }
 
-    Navigator.pushReplacementNamed(context, AppRoutes.healthInformation);
+  void _resendCode() {
+    if (widget.email == null) return;
+    context.read<UserCubit>().resendOtp(email: widget.email!);
   }
 
   void _onCodeChanged(String value, int index) {
@@ -62,193 +59,233 @@ class _OtpCodeScreenState extends State<OtpCodeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: NabadColors.background,
-        body: SafeArea(
-          child: Stack(
-            children: [
-              const Positioned(top: 84, right: -70, child: SoftRing(size: 220)),
-              Positioned(
-                left: -42,
-                bottom: 92,
-                child: IgnorePointer(
-                  child: Opacity(
-                    opacity: 0.055,
-                    child: Image.asset(
-                      'assets/images/logoIcon.png',
-                      width: 190,
-                      height: 190,
-                      fit: BoxFit.contain,
+    return BlocListener<UserCubit, UserState>(
+      listener: (context, state) {
+        if (state is VerifyOtpSuccess) {
+          Navigator.pushReplacementNamed(context, AppRoutes.healthInformation);
+        } else if (state is VerifyOtpError) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(state.message),
+              backgroundColor: Colors.red.shade700,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        } else if (state is ResendOtpSuccess) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('تم إرسال الرمز مجدداً'),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        } else if (state is ResendOtpError) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(state.message),
+              backgroundColor: Colors.red.shade700,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      },
+      child: Directionality(
+        textDirection: TextDirection.rtl,
+        child: Scaffold(
+          backgroundColor: NabadColors.background,
+          body: SafeArea(
+            child: Stack(
+              children: [
+                const Positioned(top: 84, right: -70, child: SoftRing(size: 220)),
+                Positioned(
+                  left: -42,
+                  bottom: 92,
+                  child: IgnorePointer(
+                    child: Opacity(
+                      opacity: 0.055,
+                      child: Image.asset(
+                        'assets/images/logoIcon.png',
+                        width: 190,
+                        height: 190,
+                        fit: BoxFit.contain,
+                      ),
                     ),
                   ),
                 ),
-              ),
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  return SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(22, 18, 22, 28),
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(
-                        minHeight: constraints.maxHeight - 46,
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: IconButton.filled(
-                              onPressed: () => Navigator.maybePop(context),
-                              style: IconButton.styleFrom(
-                                backgroundColor: Colors.white.withAlpha(220),
-                                foregroundColor: NabadColors.primary,
-                                fixedSize: const Size(46, 46),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                              ),
-                              icon: const Icon(Icons.arrow_forward_rounded),
-                            ),
-                          ),
-                          SizedBox(height: constraints.maxHeight * 0.12),
-                          Container(
-                            padding: const EdgeInsets.all(22),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withAlpha(238),
-                              borderRadius: BorderRadius.circular(30),
-                              border: Border.all(
-                                color: Colors.white.withAlpha(230),
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: NabadColors.primary.withAlpha(20),
-                                  blurRadius: 28,
-                                  offset: const Offset(0, 16),
-                                ),
-                              ],
-                            ),
+                BlocBuilder<UserCubit, UserState>(
+                  builder: (context, state) {
+                    final isVerifying = state is VerifyOtpLoading;
+                    final isResending = state is ResendOtpLoading;
+
+                    return LayoutBuilder(
+                      builder: (context, constraints) {
+                        return SingleChildScrollView(
+                          padding: const EdgeInsets.fromLTRB(22, 18, 22, 28),
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(minHeight: constraints.maxHeight - 46),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
-                                Container(
-                                  width: 76,
-                                  height: 76,
-                                  alignment: Alignment.center,
-                                  decoration: BoxDecoration(
-                                    color: NabadColors.primary.withAlpha(24),
-                                    borderRadius: BorderRadius.circular(24),
-                                  ),
-                                  child: const Icon(
-                                    Icons.mark_email_read_rounded,
-                                    color: NabadColors.primary,
-                                    size: 38,
-                                  ),
-                                ),
-                                const SizedBox(height: 22),
-                                const Text(
-                                  'رمز التحقق',
-                                  style: TextStyle(
-                                    color: NabadColors.darkText,
-                                    fontSize: 27,
-                                    fontWeight: FontWeight.w900,
-                                    height: 1.15,
-                                  ),
-                                ),
-                                const SizedBox(height: 10),
-                                Text(
-                                  widget.email == null
-                                      ? 'أدخل رمز التحقق المرسل إليك.'
-                                      : 'أدخل الرمز المرسل إلى ${widget.email}.',
-                                  style: const TextStyle(
-                                    color: NabadColors.mutedText,
-                                    fontSize: 14.5,
-                                    fontWeight: FontWeight.w600,
-                                    height: 1.55,
-                                  ),
-                                ),
-                                const SizedBox(height: 26),
-                                Row(
-                                  textDirection: TextDirection.ltr,
-                                  children: List.generate(
-                                    6,
-                                    (index) => Expanded(
-                                      child: Padding(
-                                        padding: EdgeInsets.only(
-                                          left: index == 5 ? 0 : 7,
-                                        ),
-                                        child: _OtpDigitField(
-                                          controller: _controllers[index],
-                                          focusNode: _focusNodes[index],
-                                          autofocus: index == 0,
-                                          onChanged: (value) =>
-                                              _onCodeChanged(value, index),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 26),
-                                SizedBox(
-                                  height: 56,
-                                  child: ElevatedButton(
-                                    onPressed: _verifyCode,
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: NabadColors.primary,
-                                      foregroundColor: Colors.white,
-                                      elevation: 0,
+                                Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: IconButton.filled(
+                                    onPressed: () => Navigator.maybePop(context),
+                                    style: IconButton.styleFrom(
+                                      backgroundColor: Colors.white.withAlpha(220),
+                                      foregroundColor: NabadColors.primary,
+                                      fixedSize: const Size(46, 46),
                                       shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(20),
+                                        borderRadius: BorderRadius.circular(16),
                                       ),
                                     ),
-                                    child: const Text(
-                                      'تأكيد الرمز',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w900,
-                                      ),
-                                    ),
+                                    icon: const Icon(Icons.arrow_forward_rounded),
                                   ),
                                 ),
-                                const SizedBox(height: 14),
-                                Wrap(
-                                  alignment: WrapAlignment.center,
-                                  crossAxisAlignment: WrapCrossAlignment.center,
-                                  children: [
-                                    const Text(
-                                      'ألم تتلقى الرمز؟',
-                                      style: TextStyle(
-                                        color: NabadColors.mutedText,
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w700,
+                                SizedBox(height: constraints.maxHeight * 0.12),
+                                Container(
+                                  padding: const EdgeInsets.all(22),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withAlpha(238),
+                                    borderRadius: BorderRadius.circular(30),
+                                    border: Border.all(color: Colors.white.withAlpha(230)),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: NabadColors.primary.withAlpha(20),
+                                        blurRadius: 28,
+                                        offset: const Offset(0, 16),
                                       ),
-                                    ),
-                                    TextButton(
-                                      onPressed: () {},
-                                      style: TextButton.styleFrom(
-                                        foregroundColor: NabadColors.primary,
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 6,
+                                    ],
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                                    children: [
+                                      Container(
+                                        width: 76,
+                                        height: 76,
+                                        alignment: Alignment.center,
+                                        decoration: BoxDecoration(
+                                          color: NabadColors.primary.withAlpha(24),
+                                          borderRadius: BorderRadius.circular(24),
                                         ),
-                                        textStyle: const TextStyle(
-                                          fontSize: 14.5,
+                                        child: const Icon(
+                                          Icons.mark_email_read_rounded,
+                                          color: NabadColors.primary,
+                                          size: 38,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 22),
+                                      const Text(
+                                        'رمز التحقق',
+                                        style: TextStyle(
+                                          color: NabadColors.darkText,
+                                          fontSize: 27,
                                           fontWeight: FontWeight.w900,
+                                          height: 1.15,
                                         ),
                                       ),
-                                      child: const Text('أرسل الرمز'),
-                                    ),
-                                  ],
+                                      const SizedBox(height: 10),
+                                      Text(
+                                        widget.email == null
+                                            ? 'أدخل رمز التحقق المرسل إليك.'
+                                            : 'أدخل الرمز المرسل إلى ${widget.email}.',
+                                        style: const TextStyle(
+                                          color: NabadColors.mutedText,
+                                          fontSize: 14.5,
+                                          fontWeight: FontWeight.w600,
+                                          height: 1.55,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 26),
+                                      Row(
+                                        textDirection: TextDirection.ltr,
+                                        children: List.generate(
+                                          6,
+                                          (index) => Expanded(
+                                            child: Padding(
+                                              padding: EdgeInsets.only(left: index == 5 ? 0 : 7),
+                                              child: _OtpDigitField(
+                                                controller: _controllers[index],
+                                                focusNode: _focusNodes[index],
+                                                autofocus: index == 0,
+                                                onChanged: (value) => _onCodeChanged(value, index),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 26),
+                                      SizedBox(
+                                        height: 56,
+                                        child: ElevatedButton(
+                                          onPressed: isVerifying ? null : _verifyCode,
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: NabadColors.primary,
+                                            foregroundColor: Colors.white,
+                                            elevation: 0,
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius: BorderRadius.circular(20),
+                                            ),
+                                          ),
+                                          child: isVerifying
+                                              ? const SizedBox(
+                                                  width: 22,
+                                                  height: 22,
+                                                  child: CircularProgressIndicator(
+                                                    color: Colors.white,
+                                                    strokeWidth: 2.5,
+                                                  ),
+                                                )
+                                              : const Text(
+                                                  'تأكيد الرمز',
+                                                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+                                                ),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 14),
+                                      Wrap(
+                                        alignment: WrapAlignment.center,
+                                        crossAxisAlignment: WrapCrossAlignment.center,
+                                        children: [
+                                          const Text(
+                                            'ألم تتلقى الرمز؟',
+                                            style: TextStyle(
+                                              color: NabadColors.mutedText,
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                          TextButton(
+                                            onPressed: isResending ? null : _resendCode,
+                                            style: TextButton.styleFrom(
+                                              foregroundColor: NabadColors.primary,
+                                              padding: const EdgeInsets.symmetric(horizontal: 6),
+                                              textStyle: const TextStyle(
+                                                fontSize: 14.5,
+                                                fontWeight: FontWeight.w900,
+                                              ),
+                                            ),
+                                            child: isResending
+                                                ? const SizedBox(
+                                                    width: 16,
+                                                    height: 16,
+                                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                                  )
+                                                : const Text('أرسل الرمز'),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ],
                             ),
                           ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ],
+                        );
+                      },
+                    );
+                  },
+                ),
+              ],
+            ),
           ),
         ),
       ),

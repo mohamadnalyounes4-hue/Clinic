@@ -16,7 +16,7 @@ class PatientLoginCard extends StatelessWidget {
   final ValueChanged<bool?> onRememberChanged;
   final FormFieldValidator<String> validatePhone;
   final FormFieldValidator<String> validatePassword;
-  final VoidCallback onLogin;
+  final VoidCallback? onLogin; // nullable لدعم isLoading
 
   const PatientLoginCard({
     super.key,
@@ -58,11 +58,7 @@ class PatientLoginCard extends StatelessWidget {
           children: [
             const Text(
               'بيانات الدخول',
-              style: TextStyle(
-                color: NabadColors.darkText,
-                fontSize: 20,
-                fontWeight: FontWeight.w900,
-              ),
+              style: TextStyle(color: NabadColors.darkText, fontSize: 20, fontWeight: FontWeight.w900),
             ),
             const SizedBox(height: 18),
             const _FieldLabel(label: 'رقم الهاتف'),
@@ -83,10 +79,7 @@ class PatientLoginCard extends StatelessWidget {
                         child: Text(
                           country.code,
                           textDirection: TextDirection.ltr,
-                          style: const TextStyle(
-                            color: NabadColors.deepTeal,
-                            fontWeight: FontWeight.w800,
-                          ),
+                          style: const TextStyle(color: NabadColors.deepTeal, fontWeight: FontWeight.w800),
                         ),
                       );
                     }).toList(),
@@ -100,13 +93,13 @@ class PatientLoginCard extends StatelessWidget {
                     validator: validatePhone,
                     keyboardType: TextInputType.number,
                     textDirection: TextDirection.ltr,
-                    maxLength: 9,
+                    maxLength: 10,
                     inputFormatters: [
                       FilteringTextInputFormatter.digitsOnly,
-                      LengthLimitingTextInputFormatter(9),
+                      LengthLimitingTextInputFormatter(10),
                     ],
                     decoration: _fieldDecoration(
-                      hintText: '9 أرقام',
+                      hintText: '10 أرقام',
                       counterText: '',
                       prefixIcon: Icons.phone_rounded,
                     ),
@@ -127,26 +120,24 @@ class PatientLoginCard extends StatelessWidget {
                 suffix: IconButton(
                   onPressed: onTogglePassword,
                   icon: Icon(
-                    obscurePassword
-                        ? Icons.visibility_rounded
-                        : Icons.visibility_off_rounded,
+                    obscurePassword ? Icons.visibility_rounded : Icons.visibility_off_rounded,
                     color: NabadColors.mutedText,
                   ),
                 ),
               ),
             ),
             const SizedBox(height: 12),
-            CheckboxListTile(
-              value: rememberMe,
-              onChanged: onRememberChanged,
-              contentPadding: EdgeInsets.zero,
-              controlAffinity: ListTileControlAffinity.leading,
-              activeColor: NabadColors.primary,
-              title: const Text(
-                'تذكرني',
-                style: TextStyle(
-                  color: NabadColors.deepTeal,
-                  fontWeight: FontWeight.w800,
+            Material(
+              color: Colors.transparent,
+              child: CheckboxListTile(
+                value: rememberMe,
+                onChanged: onRememberChanged,
+                contentPadding: EdgeInsets.zero,
+                controlAffinity: ListTileControlAffinity.leading,
+                activeColor: NabadColors.primary,
+                title: const Text(
+                  'تذكرني',
+                  style: TextStyle(color: NabadColors.deepTeal, fontWeight: FontWeight.w800),
                 ),
               ),
             ),
@@ -159,9 +150,7 @@ class PatientLoginCard extends StatelessWidget {
                   backgroundColor: NabadColors.primary,
                   foregroundColor: Colors.white,
                   elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
-                  ),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                 ),
                 child: const Text(
                   'تسجيل الدخول',
@@ -186,53 +175,30 @@ class PatientLoginCard extends StatelessWidget {
       counterText: counterText,
       filled: true,
       fillColor: const Color(0xFFF4FBFC),
-      prefixIcon: prefixIcon == null
-          ? null
-          : Icon(prefixIcon, color: NabadColors.primary),
+      prefixIcon: prefixIcon == null ? null : Icon(prefixIcon, color: NabadColors.primary),
       suffixIcon: suffix,
-      hintStyle: const TextStyle(
-        color: NabadColors.mutedText,
-        fontWeight: FontWeight.w600,
-      ),
+      hintStyle: const TextStyle(color: NabadColors.mutedText, fontWeight: FontWeight.w600),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(18),
-        borderSide: BorderSide.none,
-      ),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: BorderSide.none),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(18),
-        borderSide: BorderSide(color: NabadColors.primary.withAlpha(18)),
-      ),
+          borderRadius: BorderRadius.circular(18), borderSide: BorderSide(color: NabadColors.primary.withAlpha(18))),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(18),
-        borderSide: const BorderSide(color: NabadColors.primary, width: 1.5),
-      ),
+          borderRadius: BorderRadius.circular(18), borderSide: const BorderSide(color: NabadColors.primary, width: 1.5)),
       errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(18),
-        borderSide: const BorderSide(color: Color(0xFFD94B4B), width: 1.2),
-      ),
+          borderRadius: BorderRadius.circular(18), borderSide: const BorderSide(color: Color(0xFFD94B4B), width: 1.2)),
       focusedErrorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(18),
-        borderSide: const BorderSide(color: Color(0xFFD94B4B), width: 1.5),
-      ),
+          borderRadius: BorderRadius.circular(18), borderSide: const BorderSide(color: Color(0xFFD94B4B), width: 1.5)),
     );
   }
 }
 
 class _FieldLabel extends StatelessWidget {
   final String label;
-
   const _FieldLabel({required this.label});
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      label,
-      style: const TextStyle(
-        color: NabadColors.deepTeal,
-        fontSize: 13.5,
-        fontWeight: FontWeight.w900,
-      ),
-    );
+    return Text(label,
+        style: const TextStyle(color: NabadColors.deepTeal, fontSize: 13.5, fontWeight: FontWeight.w900));
   }
 }

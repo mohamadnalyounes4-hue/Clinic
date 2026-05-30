@@ -1,40 +1,38 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:nabad/Cubits/user_cubit.dart';
+import 'package:nabad/Cubits/user_state.dart';
 import 'package:nabad/core/theme/nabad_colors.dart';
+import 'package:nabad/screens/HomePage_patient/homepage_p.dart';
 import 'package:nabad/widgets/soft_ring.dart';
 
 class HealthInformationScreen extends StatefulWidget {
   const HealthInformationScreen({super.key});
 
   @override
-  State<HealthInformationScreen> createState() =>
-      _HealthInformationScreenState();
+  State<HealthInformationScreen> createState() => _HealthInformationScreenState();
 }
 
 class _HealthInformationScreenState extends State<HealthInformationScreen> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final TextEditingController _birthDateController = TextEditingController();
-  final TextEditingController _chronicDiseaseController =
-      TextEditingController();
+  final TextEditingController _addressController = TextEditingController();
+  final TextEditingController _chronicDiseaseController = TextEditingController();
   final TextEditingController _allergyController = TextEditingController();
 
   String? _bloodType;
+  String? _gender;
   bool? _hasChronicDisease;
   bool? _hasAllergy;
 
-  final List<String> _bloodTypes = const [
-    'A+',
-    'A-',
-    'B+',
-    'B-',
-    'AB+',
-    'AB-',
-    'O+',
-    'O-',
-  ];
+  final List<String> _bloodTypes = const ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+  final List<String> _genders = const ['male', 'female'];
+  final Map<String, String> _genderLabels = const {'male': 'ذكر', 'female': 'أنثى'};
 
   @override
   void dispose() {
     _birthDateController.dispose();
+    _addressController.dispose();
     _chronicDiseaseController.dispose();
     _allergyController.dispose();
     super.dispose();
@@ -49,16 +47,19 @@ class _HealthInformationScreenState extends State<HealthInformationScreen> {
       lastDate: now,
     );
     if (pickedDate == null) return;
-
     setState(() {
       _birthDateController.text =
-          '${pickedDate.year}/${pickedDate.month.toString().padLeft(2, '0')}/${pickedDate.day.toString().padLeft(2, '0')}';
+          '${pickedDate.year}-${pickedDate.month.toString().padLeft(2, '0')}-${pickedDate.day.toString().padLeft(2, '0')}';
     });
   }
 
   void _continue() {
     if (!_formKey.currentState!.validate()) return;
 
+    if (_gender == null) {
+      _showSnackBar('حدد الجنس');
+      return;
+    }
     if (_hasChronicDisease == null) {
       _showSnackBar('حدد هل لديك مرض مزمن');
       return;
@@ -68,123 +69,133 @@ class _HealthInformationScreenState extends State<HealthInformationScreen> {
       return;
     }
 
-    debugPrint('Health information completed');
+    context.read<UserCubit>().completeProfile(
+          gender: _gender!,
+          address: _addressController.text.trim(),
+          birthDate: _birthDateController.text,
+          bloodType: _bloodType!,
+        );
   }
 
   void _showSnackBar(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
   String? _requiredValidator(String? value, String label) {
-    if ((value ?? '').trim().isEmpty) {
-      return '$label مطلوب';
-    }
+    if ((value ?? '').trim().isEmpty) return '$label مطلوب';
     return null;
   }
 
-  String? _conditionalRequiredValidator(
-    String? value, {
-    required bool isRequired,
-    required String label,
-  }) {
-    if (isRequired && (value ?? '').trim().isEmpty) {
-      return '$label مطلوب';
-    }
+  String? _conditionalRequiredValidator(String? value, {required bool isRequired, required String label}) {
+    if (isRequired && (value ?? '').trim().isEmpty) return '$label مطلوب';
     return null;
   }
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: NabadColors.background,
-        body: SafeArea(
-          child: Stack(
-            children: [
-              const Positioned(top: 70, right: -76, child: SoftRing(size: 230)),
-              Positioned(
-                left: -46,
-                bottom: 120,
-                child: IgnorePointer(
-                  child: Opacity(
-                    opacity: 0.055,
-                    child: Image.asset(
-                      'assets/images/logoIcon.png',
-                      width: 210,
-                      height: 210,
-                      fit: BoxFit.contain,
+    return BlocListener<UserCubit, UserState>(
+      listener: (context, state) {
+        if (state is CompleteProfileSuccess) {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (_) => const PatientHomePage()),
+            (route) => false,
+          );
+        } else if (state is CompleteProfileError) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(state.message),
+              backgroundColor: Colors.red.shade700,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      },
+      child: Directionality(
+        textDirection: TextDirection.rtl,
+        child: Scaffold(
+          backgroundColor: NabadColors.background,
+          body: SafeArea(
+            child: Stack(
+              children: [
+                const Positioned(top: 70, right: -76, child: SoftRing(size: 230)),
+                Positioned(
+                  left: -46,
+                  bottom: 120,
+                  child: IgnorePointer(
+                    child: Opacity(
+                      opacity: 0.055,
+                      child: Image.asset('assets/images/logoIcon.png', width: 210, height: 210, fit: BoxFit.contain),
                     ),
                   ),
                 ),
-              ),
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  return SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(
-                        minHeight: constraints.maxHeight - 44,
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          _HealthHero(onBack: () => Navigator.maybePop(context)),
-                          const SizedBox(height: 18),
-                          _ProgressHint(
-                            hasBirthDate: _birthDateController.text.isNotEmpty,
-                            hasBloodType: _bloodType != null,
-                            hasChronicAnswer: _hasChronicDisease != null,
-                            hasAllergyAnswer: _hasAllergy != null,
-                          ),
-                          const SizedBox(height: 18),
-                          _AnimatedEntrance(
-                            delay: const Duration(milliseconds: 80),
-                            child: _HealthFormCard(
-                              formKey: _formKey,
-                              birthDateController: _birthDateController,
-                              chronicDiseaseController:
-                                  _chronicDiseaseController,
-                              allergyController: _allergyController,
-                              bloodTypes: _bloodTypes,
-                              bloodType: _bloodType,
-                              hasChronicDisease: _hasChronicDisease,
-                              hasAllergy: _hasAllergy,
-                              onBirthDateTap: _pickBirthDate,
-                              onBloodTypeChanged: (value) {
-                                setState(() => _bloodType = value);
-                              },
-                              onChronicChanged: (value) {
-                                setState(() {
-                                  _hasChronicDisease = value;
-                                  if (value == false) {
-                                    _chronicDiseaseController.clear();
-                                  }
-                                });
-                              },
-                              onAllergyChanged: (value) {
-                                setState(() {
-                                  _hasAllergy = value;
-                                  if (value == false) {
-                                    _allergyController.clear();
-                                  }
-                                });
-                              },
-                              requiredValidator: _requiredValidator,
-                              conditionalRequiredValidator:
-                                  _conditionalRequiredValidator,
-                              onContinue: _continue,
+                BlocBuilder<UserCubit, UserState>(
+                  builder: (context, state) {
+                    final isLoading = state is CompleteProfileLoading;
+                    return LayoutBuilder(
+                      builder: (context, constraints) {
+                        return SingleChildScrollView(
+                          padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(minHeight: constraints.maxHeight - 44),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                _HealthHero(onBack: () => Navigator.maybePop(context)),
+                                const SizedBox(height: 18),
+                                _ProgressHint(
+                                  hasBirthDate: _birthDateController.text.isNotEmpty,
+                                  hasBloodType: _bloodType != null,
+                                  hasGender: _gender != null,
+                                  hasAddress: _addressController.text.isNotEmpty,
+                                ),
+                                const SizedBox(height: 18),
+                                _AnimatedEntrance(
+                                  delay: const Duration(milliseconds: 80),
+                                  child: _HealthFormCard(
+                                    formKey: _formKey,
+                                    birthDateController: _birthDateController,
+                                    addressController: _addressController,
+                                    chronicDiseaseController: _chronicDiseaseController,
+                                    allergyController: _allergyController,
+                                    bloodTypes: _bloodTypes,
+                                    bloodType: _bloodType,
+                                    genders: _genders,
+                                    genderLabels: _genderLabels,
+                                    gender: _gender,
+                                    hasChronicDisease: _hasChronicDisease,
+                                    hasAllergy: _hasAllergy,
+                                    isLoading: isLoading,
+                                    onBirthDateTap: _pickBirthDate,
+                                    onBloodTypeChanged: (value) => setState(() => _bloodType = value),
+                                    onGenderChanged: (value) => setState(() => _gender = value),
+                                    onChronicChanged: (value) {
+                                      setState(() {
+                                        _hasChronicDisease = value;
+                                        if (value == false) _chronicDiseaseController.clear();
+                                      });
+                                    },
+                                    onAllergyChanged: (value) {
+                                      setState(() {
+                                        _hasAllergy = value;
+                                        if (value == false) _allergyController.clear();
+                                      });
+                                    },
+                                    requiredValidator: _requiredValidator,
+                                    conditionalRequiredValidator: _conditionalRequiredValidator,
+                                    onContinue: isLoading ? null : _continue,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ],
+                        );
+                      },
+                    );
+                  },
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -192,9 +203,10 @@ class _HealthInformationScreenState extends State<HealthInformationScreen> {
   }
 }
 
+// ─── Hero ────────────────────────────────────────────────────────────────────
+
 class _HealthHero extends StatelessWidget {
   final VoidCallback onBack;
-
   const _HealthHero({required this.onBack});
 
   @override
@@ -204,33 +216,19 @@ class _HealthHero extends StatelessWidget {
         height: 218,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(32),
-          boxShadow: [
-            BoxShadow(
-              color: NabadColors.primary.withAlpha(30),
-              blurRadius: 30,
-              offset: const Offset(0, 16),
-            ),
-          ],
+          boxShadow: [BoxShadow(color: NabadColors.primary.withAlpha(30), blurRadius: 30, offset: const Offset(0, 16))],
         ),
         clipBehavior: Clip.antiAlias,
         child: Stack(
           fit: StackFit.expand,
           children: [
-            Image.asset(
-              'assets/images/11.jpg',
-              fit: BoxFit.cover,
-              alignment: Alignment.centerRight,
-            ),
+            Image.asset('assets/images/11.jpg', fit: BoxFit.cover, alignment: Alignment.centerRight),
             DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.centerRight,
                   end: Alignment.centerLeft,
-                  colors: [
-                    NabadColors.primary.withAlpha(225),
-                    NabadColors.primary.withAlpha(128),
-                    Colors.transparent,
-                  ],
+                  colors: [NabadColors.primary.withAlpha(225), NabadColors.primary.withAlpha(128), Colors.transparent],
                 ),
               ),
             ),
@@ -243,9 +241,7 @@ class _HealthHero extends StatelessWidget {
                   backgroundColor: Colors.white.withAlpha(225),
                   foregroundColor: NabadColors.primary,
                   fixedSize: const Size(44, 44),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 ),
                 icon: const Icon(Icons.arrow_forward_rounded),
               ),
@@ -258,43 +254,16 @@ class _HealthHero extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 7,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withAlpha(220),
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: const Text(
-                      'الملف الطبي',
-                      style: TextStyle(
-                        color: NabadColors.primary,
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                    decoration: BoxDecoration(color: Colors.white.withAlpha(220), borderRadius: BorderRadius.circular(999)),
+                    child: const Text('الملف الطبي', style: TextStyle(color: NabadColors.primary, fontSize: 12.5, fontWeight: FontWeight.w900)),
                   ),
                   const SizedBox(height: 12),
-                  const Text(
-                    'Your health information',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 26,
-                      fontWeight: FontWeight.w900,
-                      height: 1.1,
-                    ),
-                  ),
+                  const Text('Your health information',
+                      style: TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w900, height: 1.1)),
                   const SizedBox(height: 8),
-                  Text(
-                    'أكمل معلوماتك الصحية حتى يتم تجهيز ملفك الطبي بدقة.',
-                    style: TextStyle(
-                      color: Colors.white.withAlpha(225),
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.w700,
-                      height: 1.45,
-                    ),
-                  ),
+                  Text('أكمل معلوماتك الصحية حتى يتم تجهيز ملفك الطبي بدقة.',
+                      style: TextStyle(color: Colors.white.withAlpha(225), fontSize: 13.5, fontWeight: FontWeight.w700, height: 1.45)),
                 ],
               ),
             ),
@@ -305,27 +274,22 @@ class _HealthHero extends StatelessWidget {
   }
 }
 
+// ─── Progress ─────────────────────────────────────────────────────────────────
+
 class _ProgressHint extends StatelessWidget {
   final bool hasBirthDate;
   final bool hasBloodType;
-  final bool hasChronicAnswer;
-  final bool hasAllergyAnswer;
+  final bool hasGender;
+  final bool hasAddress;
 
   const _ProgressHint({
     required this.hasBirthDate,
     required this.hasBloodType,
-    required this.hasChronicAnswer,
-    required this.hasAllergyAnswer,
+    required this.hasGender,
+    required this.hasAddress,
   });
 
-  int get _doneCount {
-    return [
-      hasBirthDate,
-      hasBloodType,
-      hasChronicAnswer,
-      hasAllergyAnswer,
-    ].where((isDone) => isDone).length;
-  }
+  int get _doneCount => [hasBirthDate, hasBloodType, hasGender, hasAddress].where((d) => d).length;
 
   @override
   Widget build(BuildContext context) {
@@ -344,28 +308,16 @@ class _ProgressHint extends StatelessWidget {
               width: 46,
               height: 46,
               alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: NabadColors.primary.withAlpha(22),
-                borderRadius: BorderRadius.circular(17),
-              ),
-              child: const Icon(
-                Icons.fact_check_rounded,
-                color: NabadColors.primary,
-              ),
+              decoration: BoxDecoration(color: NabadColors.primary.withAlpha(22), borderRadius: BorderRadius.circular(17)),
+              child: const Icon(Icons.fact_check_rounded, color: NabadColors.primary),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'اكتمل $_doneCount من 4',
-                    style: const TextStyle(
-                      color: NabadColors.deepTeal,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
+                  Text('اكتمل $_doneCount من 4',
+                      style: const TextStyle(color: NabadColors.deepTeal, fontSize: 14, fontWeight: FontWeight.w900)),
                   const SizedBox(height: 7),
                   ClipRRect(
                     borderRadius: BorderRadius.circular(999),
@@ -373,9 +325,7 @@ class _ProgressHint extends StatelessWidget {
                       value: _doneCount / 4,
                       minHeight: 7,
                       backgroundColor: NabadColors.primary.withAlpha(18),
-                      valueColor: const AlwaysStoppedAnimation<Color>(
-                        NabadColors.primary,
-                      ),
+                      valueColor: const AlwaysStoppedAnimation<Color>(NabadColors.primary),
                     ),
                   ),
                 ],
@@ -388,38 +338,48 @@ class _ProgressHint extends StatelessWidget {
   }
 }
 
+// ─── Form Card ────────────────────────────────────────────────────────────────
+
 class _HealthFormCard extends StatelessWidget {
   final GlobalKey<FormState> formKey;
   final TextEditingController birthDateController;
+  final TextEditingController addressController;
   final TextEditingController chronicDiseaseController;
   final TextEditingController allergyController;
   final List<String> bloodTypes;
   final String? bloodType;
+  final List<String> genders;
+  final Map<String, String> genderLabels;
+  final String? gender;
   final bool? hasChronicDisease;
   final bool? hasAllergy;
+  final bool isLoading;
   final VoidCallback onBirthDateTap;
   final ValueChanged<String?> onBloodTypeChanged;
+  final ValueChanged<String?> onGenderChanged;
   final ValueChanged<bool> onChronicChanged;
   final ValueChanged<bool> onAllergyChanged;
   final String? Function(String?, String) requiredValidator;
-  final String? Function(
-    String?, {
-    required bool isRequired,
-    required String label,
-  }) conditionalRequiredValidator;
-  final VoidCallback onContinue;
+  final String? Function(String?, {required bool isRequired, required String label}) conditionalRequiredValidator;
+  final VoidCallback? onContinue;
 
   const _HealthFormCard({
     required this.formKey,
     required this.birthDateController,
+    required this.addressController,
     required this.chronicDiseaseController,
     required this.allergyController,
     required this.bloodTypes,
     required this.bloodType,
+    required this.genders,
+    required this.genderLabels,
+    required this.gender,
     required this.hasChronicDisease,
     required this.hasAllergy,
+    required this.isLoading,
     required this.onBirthDateTap,
     required this.onBloodTypeChanged,
+    required this.onGenderChanged,
     required this.onChronicChanged,
     required this.onAllergyChanged,
     required this.requiredValidator,
@@ -435,24 +395,17 @@ class _HealthFormCard extends StatelessWidget {
         color: Colors.white.withAlpha(240),
         borderRadius: BorderRadius.circular(30),
         border: Border.all(color: Colors.white.withAlpha(230)),
-        boxShadow: [
-          BoxShadow(
-            color: NabadColors.primary.withAlpha(18),
-            blurRadius: 28,
-            offset: const Offset(0, 16),
-          ),
-        ],
+        boxShadow: [BoxShadow(color: NabadColors.primary.withAlpha(18), blurRadius: 28, offset: const Offset(0, 16))],
       ),
       child: Form(
         key: formKey,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const _SectionTitle(
-              icon: Icons.person_search_rounded,
-              title: 'المعلومات الأساسية',
-            ),
+            const _SectionTitle(icon: Icons.person_search_rounded, title: 'المعلومات الأساسية'),
             const SizedBox(height: 16),
+
+            // Birth Date
             _HealthTextField(
               controller: birthDateController,
               label: 'تاريخ الميلاد',
@@ -463,38 +416,59 @@ class _HealthFormCard extends StatelessWidget {
               validator: (value) => requiredValidator(value, 'تاريخ الميلاد'),
             ),
             const SizedBox(height: 16),
+
+            // Gender
+            const _FieldLabel(label: 'الجنس'),
+            const SizedBox(height: 8),
+            DropdownButtonFormField<String>(
+              value: gender,
+              isExpanded: true,
+              decoration: _inputDecoration(hintText: 'اختر الجنس', icon: Icons.wc_rounded),
+              borderRadius: BorderRadius.circular(18),
+              items: genders.map((g) {
+                return DropdownMenuItem<String>(
+                  value: g,
+                  child: Text(genderLabels[g]!, style: const TextStyle(color: NabadColors.deepTeal, fontWeight: FontWeight.w800)),
+                );
+              }).toList(),
+              onChanged: onGenderChanged,
+              validator: (value) => value == null ? 'الجنس مطلوب' : null,
+            ),
+            const SizedBox(height: 16),
+
+            // Address
+            _HealthTextField(
+              controller: addressController,
+              label: 'العنوان',
+              hintText: 'مثال: دمشق، سوريا',
+              icon: Icons.location_on_rounded,
+              validator: (value) => requiredValidator(value, 'العنوان'),
+            ),
+            const SizedBox(height: 16),
+
+            // Blood Type
             const _FieldLabel(label: 'زمرة الدم'),
             const SizedBox(height: 8),
             DropdownButtonFormField<String>(
-              initialValue: bloodType,
+              value: bloodType,
               isExpanded: true,
-              decoration: _inputDecoration(
-                hintText: 'اختر زمرة الدم',
-                icon: Icons.bloodtype_rounded,
-              ),
+              decoration: _inputDecoration(hintText: 'اختر زمرة الدم', icon: Icons.bloodtype_rounded),
               borderRadius: BorderRadius.circular(18),
               items: bloodTypes.map((type) {
                 return DropdownMenuItem<String>(
                   value: type,
-                  child: Text(
-                    type,
-                    textDirection: TextDirection.ltr,
-                    style: const TextStyle(
-                      color: NabadColors.deepTeal,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
+                  child: Text(type, textDirection: TextDirection.ltr,
+                      style: const TextStyle(color: NabadColors.deepTeal, fontWeight: FontWeight.w800)),
                 );
               }).toList(),
               onChanged: onBloodTypeChanged,
               validator: (value) => value == null ? 'زمرة الدم مطلوبة' : null,
             ),
             const SizedBox(height: 22),
-            const _SectionTitle(
-              icon: Icons.health_and_safety_rounded,
-              title: 'الحالة الصحية',
-            ),
+
+            const _SectionTitle(icon: Icons.health_and_safety_rounded, title: 'الحالة الصحية'),
             const SizedBox(height: 14),
+
             _AnimatedHealthQuestion(
               question: 'هل لديك مرض مزمن؟',
               description: 'مثل السكري، الضغط، أمراض القلب أو الربو.',
@@ -510,14 +484,11 @@ class _HealthFormCard extends StatelessWidget {
                 hintText: 'اكتب وصف المرض المزمن',
                 icon: Icons.edit_note_rounded,
                 maxLines: 3,
-                validator: (value) => conditionalRequiredValidator(
-                  value,
-                  isRequired: hasChronicDisease == true,
-                  label: 'وصف المرض المزمن',
-                ),
+                validator: (value) => conditionalRequiredValidator(value, isRequired: hasChronicDisease == true, label: 'وصف المرض المزمن'),
               ),
             ),
             const SizedBox(height: 16),
+
             _AnimatedHealthQuestion(
               question: 'هل لديك حساسية؟',
               description: 'مثل حساسية الأدوية، الطعام أو المواد الطبية.',
@@ -533,30 +504,39 @@ class _HealthFormCard extends StatelessWidget {
                 hintText: 'اكتب نوع الحساسية',
                 icon: Icons.edit_note_rounded,
                 maxLines: 3,
-                validator: (value) => conditionalRequiredValidator(
-                  value,
-                  isRequired: hasAllergy == true,
-                  label: 'وصف الحساسية',
-                ),
+                validator: (value) => conditionalRequiredValidator(value, isRequired: hasAllergy == true, label: 'وصف الحساسية'),
               ),
             ),
             const SizedBox(height: 26),
+
             SizedBox(
               height: 56,
               child: ElevatedButton(
-                onPressed: onContinue,
+                onPressed: () {
+    // إذا كان عندك متغير isLoading، خليه يشتغل
+    if (isLoading) return;
+
+    // هنا نروح للـ Home Page
+    Navigator.pushReplacement(
+      context,  // لازم يكون context متوفر هون
+      MaterialPageRoute(
+        builder: (context) => const PatientHomePage(), 
+      ),
+    );
+  },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: NabadColors.primary,
                   foregroundColor: Colors.white,
                   elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
-                  ),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                 ),
-                child: const Text(
-                  'متابعة',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
-                ),
+                child: isLoading
+                    ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
+                      )
+                    : const Text('متابعة', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900)),
               ),
             ),
           ],
@@ -566,10 +546,11 @@ class _HealthFormCard extends StatelessWidget {
   }
 }
 
+// ─── Reusable Widgets ─────────────────────────────────────────────────────────
+
 class _SectionTitle extends StatelessWidget {
   final IconData icon;
   final String title;
-
   const _SectionTitle({required this.icon, required this.title});
 
   @override
@@ -579,21 +560,11 @@ class _SectionTitle extends StatelessWidget {
         Container(
           width: 38,
           height: 38,
-          decoration: BoxDecoration(
-            color: NabadColors.primary.withAlpha(20),
-            borderRadius: BorderRadius.circular(14),
-          ),
+          decoration: BoxDecoration(color: NabadColors.primary.withAlpha(20), borderRadius: BorderRadius.circular(14)),
           child: Icon(icon, color: NabadColors.primary, size: 20),
         ),
         const SizedBox(width: 10),
-        Text(
-          title,
-          style: const TextStyle(
-            color: NabadColors.darkText,
-            fontSize: 17,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
+        Text(title, style: const TextStyle(color: NabadColors.darkText, fontSize: 17, fontWeight: FontWeight.w900)),
       ],
     );
   }
@@ -622,11 +593,7 @@ class _AnimatedHealthQuestion extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFFF4FBFC),
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(
-          color: value == null
-              ? NabadColors.primary.withAlpha(18)
-              : NabadColors.primary.withAlpha(52),
-        ),
+        border: Border.all(color: value == null ? NabadColors.primary.withAlpha(18) : NabadColors.primary.withAlpha(52)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -637,24 +604,10 @@ class _AnimatedHealthQuestion extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      question,
-                      style: const TextStyle(
-                        color: NabadColors.deepTeal,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
+                    Text(question, style: const TextStyle(color: NabadColors.deepTeal, fontSize: 15, fontWeight: FontWeight.w900)),
                     const SizedBox(height: 5),
-                    Text(
-                      description,
-                      style: const TextStyle(
-                        color: NabadColors.mutedText,
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w600,
-                        height: 1.35,
-                      ),
-                    ),
+                    Text(description,
+                        style: const TextStyle(color: NabadColors.mutedText, fontSize: 12.5, fontWeight: FontWeight.w600, height: 1.35)),
                   ],
                 ),
               ),
@@ -662,15 +615,9 @@ class _AnimatedHealthQuestion extends StatelessWidget {
               AnimatedSwitcher(
                 duration: const Duration(milliseconds: 200),
                 child: Icon(
-                  value == true
-                      ? yesIcon
-                      : value == false
-                          ? Icons.check_circle_rounded
-                          : Icons.help_outline_rounded,
+                  value == true ? yesIcon : value == false ? Icons.check_circle_rounded : Icons.help_outline_rounded,
                   key: ValueKey(value),
-                  color: value == null
-                      ? NabadColors.mutedText
-                      : NabadColors.primary,
+                  color: value == null ? NabadColors.mutedText : NabadColors.primary,
                 ),
               ),
             ],
@@ -678,21 +625,9 @@ class _AnimatedHealthQuestion extends StatelessWidget {
           const SizedBox(height: 13),
           Row(
             children: [
-              Expanded(
-                child: _ChoiceTile(
-                  label: 'نعم',
-                  isSelected: value == true,
-                  onTap: () => onChanged(true),
-                ),
-              ),
+              Expanded(child: _ChoiceTile(label: 'نعم', isSelected: value == true, onTap: () => onChanged(true))),
               const SizedBox(width: 10),
-              Expanded(
-                child: _ChoiceTile(
-                  label: 'لا',
-                  isSelected: value == false,
-                  onTap: () => onChanged(false),
-                ),
-              ),
+              Expanded(child: _ChoiceTile(label: 'لا', isSelected: value == false, onTap: () => onChanged(false))),
             ],
           ),
         ],
@@ -706,11 +641,7 @@ class _ChoiceTile extends StatelessWidget {
   final bool isSelected;
   final VoidCallback onTap;
 
-  const _ChoiceTile({
-    required this.label,
-    required this.isSelected,
-    required this.onTap,
-  });
+  const _ChoiceTile({required this.label, required this.isSelected, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -724,28 +655,13 @@ class _ChoiceTile extends StatelessWidget {
         decoration: BoxDecoration(
           color: isSelected ? NabadColors.primary : Colors.white,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isSelected
-                ? NabadColors.primary
-                : NabadColors.primary.withAlpha(28),
-          ),
+          border: Border.all(color: isSelected ? NabadColors.primary : NabadColors.primary.withAlpha(28)),
           boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: NabadColors.primary.withAlpha(28),
-                    blurRadius: 18,
-                    offset: const Offset(0, 8),
-                  ),
-                ]
+              ? [BoxShadow(color: NabadColors.primary.withAlpha(28), blurRadius: 18, offset: const Offset(0, 8))]
               : null,
         ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isSelected ? Colors.white : NabadColors.deepTeal,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
+        child: Text(label,
+            style: TextStyle(color: isSelected ? Colors.white : NabadColors.deepTeal, fontWeight: FontWeight.w900)),
       ),
     );
   }
@@ -755,10 +671,7 @@ class _ConditionalAnimatedField extends StatelessWidget {
   final bool isVisible;
   final Widget child;
 
-  const _ConditionalAnimatedField({
-    required this.isVisible,
-    required this.child,
-  });
+  const _ConditionalAnimatedField({required this.isVisible, required this.child});
 
   @override
   Widget build(BuildContext context) {
@@ -767,17 +680,10 @@ class _ConditionalAnimatedField extends StatelessWidget {
       switchInCurve: Curves.easeOutCubic,
       switchOutCurve: Curves.easeInCubic,
       transitionBuilder: (child, animation) {
-        return SizeTransition(
-          sizeFactor: animation,
-          child: FadeTransition(opacity: animation, child: child),
-        );
+        return SizeTransition(sizeFactor: animation, child: FadeTransition(opacity: animation, child: child));
       },
       child: isVisible
-          ? Padding(
-              key: const ValueKey('visible-field'),
-              padding: const EdgeInsets.only(top: 12),
-              child: child,
-            )
+          ? Padding(key: const ValueKey('visible-field'), padding: const EdgeInsets.only(top: 12), child: child)
           : const SizedBox.shrink(key: ValueKey('hidden-field')),
     );
   }
@@ -826,19 +732,11 @@ class _HealthTextField extends StatelessWidget {
 
 class _FieldLabel extends StatelessWidget {
   final String label;
-
   const _FieldLabel({required this.label});
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      label,
-      style: const TextStyle(
-        color: NabadColors.deepTeal,
-        fontSize: 13.5,
-        fontWeight: FontWeight.w900,
-      ),
-    );
+    return Text(label, style: const TextStyle(color: NabadColors.deepTeal, fontSize: 13.5, fontWeight: FontWeight.w900));
   }
 }
 
@@ -846,10 +744,7 @@ class _AnimatedEntrance extends StatelessWidget {
   final Widget child;
   final Duration delay;
 
-  const _AnimatedEntrance({
-    required this.child,
-    this.delay = Duration.zero,
-  });
+  const _AnimatedEntrance({required this.child, this.delay = Duration.zero});
 
   @override
   Widget build(BuildContext context) {
@@ -860,16 +755,10 @@ class _AnimatedEntrance extends StatelessWidget {
       builder: (context, value, child) {
         final double delayedValue = delay == Duration.zero
             ? value
-            : ((value * (520 + delay.inMilliseconds) - delay.inMilliseconds) /
-                    520)
-                .clamp(0.0, 1.0);
-
+            : ((value * (520 + delay.inMilliseconds) - delay.inMilliseconds) / 520).clamp(0.0, 1.0);
         return Opacity(
           opacity: delayedValue,
-          child: Transform.translate(
-            offset: Offset(0, 18 * (1 - delayedValue)),
-            child: child,
-          ),
+          child: Transform.translate(offset: Offset(0, 18 * (1 - delayedValue)), child: child),
         );
       },
       child: child,
@@ -877,39 +766,22 @@ class _AnimatedEntrance extends StatelessWidget {
   }
 }
 
-InputDecoration _inputDecoration({
-  required String hintText,
-  required IconData icon,
-}) {
+InputDecoration _inputDecoration({required String hintText, required IconData icon}) {
   return InputDecoration(
     hintText: hintText,
     filled: true,
     fillColor: const Color(0xFFF4FBFC),
     prefixIcon: Icon(icon, color: NabadColors.primary),
-    hintStyle: const TextStyle(
-      color: NabadColors.mutedText,
-      fontWeight: FontWeight.w600,
-    ),
+    hintStyle: const TextStyle(color: NabadColors.mutedText, fontWeight: FontWeight.w600),
     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-    border: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(18),
-      borderSide: BorderSide.none,
-    ),
+    border: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: BorderSide.none),
     enabledBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(18),
-      borderSide: BorderSide(color: NabadColors.primary.withAlpha(18)),
-    ),
+        borderRadius: BorderRadius.circular(18), borderSide: BorderSide(color: NabadColors.primary.withAlpha(18))),
     focusedBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(18),
-      borderSide: const BorderSide(color: NabadColors.primary, width: 1.5),
-    ),
+        borderRadius: BorderRadius.circular(18), borderSide: const BorderSide(color: NabadColors.primary, width: 1.5)),
     errorBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(18),
-      borderSide: const BorderSide(color: Color(0xFFD94B4B), width: 1.2),
-    ),
+        borderRadius: BorderRadius.circular(18), borderSide: const BorderSide(color: Color(0xFFD94B4B), width: 1.2)),
     focusedErrorBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(18),
-      borderSide: const BorderSide(color: Color(0xFFD94B4B), width: 1.5),
-    ),
+        borderRadius: BorderRadius.circular(18), borderSide: const BorderSide(color: Color(0xFFD94B4B), width: 1.5)),
   );
 }

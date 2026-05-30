@@ -6,6 +6,7 @@ class RegisterFormCard extends StatelessWidget {
   final TextEditingController firstNameController;
   final TextEditingController lastNameController;
   final TextEditingController emailController;
+  final TextEditingController phoneController;
   final TextEditingController passwordController;
   final TextEditingController confirmPasswordController;
   final bool obscurePassword;
@@ -17,6 +18,7 @@ class RegisterFormCard extends StatelessWidget {
   final FormFieldValidator<String> validateFirstName;
   final FormFieldValidator<String> validateLastName;
   final FormFieldValidator<String> validateEmail;
+  final FormFieldValidator<String> validatePhone;
   final FormFieldValidator<String> validatePassword;
   final FormFieldValidator<String> validateConfirmPassword;
   final VoidCallback onCreateAccount;
@@ -27,6 +29,7 @@ class RegisterFormCard extends StatelessWidget {
     required this.firstNameController,
     required this.lastNameController,
     required this.emailController,
+    required this.phoneController,
     required this.passwordController,
     required this.confirmPasswordController,
     required this.obscurePassword,
@@ -38,6 +41,7 @@ class RegisterFormCard extends StatelessWidget {
     required this.validateFirstName,
     required this.validateLastName,
     required this.validateEmail,
+    required this.validatePhone,
     required this.validatePassword,
     required this.validateConfirmPassword,
     required this.onCreateAccount,
@@ -79,7 +83,7 @@ class RegisterFormCard extends StatelessWidget {
                   child: _RegisterTextField(
                     controller: firstNameController,
                     label: 'الاسم الأول',
-                    hintText: 'مثال: أحمد',
+                    hintText: '',
                     icon: Icons.person_rounded,
                     validator: validateFirstName,
                   ),
@@ -89,7 +93,7 @@ class RegisterFormCard extends StatelessWidget {
                   child: _RegisterTextField(
                     controller: lastNameController,
                     label: 'الاسم الأخير',
-                    hintText: 'مثال: محمد',
+                    hintText: '',
                     icon: Icons.badge_rounded,
                     validator: validateLastName,
                   ),
@@ -105,6 +109,16 @@ class RegisterFormCard extends StatelessWidget {
               keyboardType: TextInputType.emailAddress,
               textDirection: TextDirection.ltr,
               validator: validateEmail,
+            ),
+            const SizedBox(height: 14),
+            _RegisterTextField(
+              controller: phoneController,
+              label: 'رقم الهاتف',
+              hintText: '--------09',
+              icon: Icons.phone_rounded,
+              keyboardType: TextInputType.phone,
+              textDirection: TextDirection.ltr,
+              validator: validatePhone,
             ),
             const SizedBox(height: 14),
             _RegisterTextField(
@@ -136,9 +150,9 @@ class RegisterFormCard extends StatelessWidget {
                   child: FadeTransition(opacity: animation, child: child),
                 );
               },
-              child: passwordValue.isEmpty
-                  ? const SizedBox.shrink(key: ValueKey('empty-strength'))
-                  : _PasswordStrengthMeter(password: passwordValue),
+              // child: passwordValue.isEmpty
+              //     ? const SizedBox.shrink(key: ValueKey('empty-strength'))
+              //     : _PasswordStrengthMeter(password: passwordValue),
             ),
             const SizedBox(height: 14),
             _RegisterTextField(
@@ -280,150 +294,150 @@ class _RegisterTextField extends StatelessWidget {
   }
 }
 
-class _PasswordStrengthMeter extends StatelessWidget {
-  final String password;
+// class _PasswordStrengthMeter extends StatelessWidget {
+//   final String password;
 
-  const _PasswordStrengthMeter({required this.password});
+//   const _PasswordStrengthMeter({required this.password});
 
-  bool get _hasUppercase => RegExp(r'[A-Z]').hasMatch(password);
-  bool get _hasLowercase => RegExp(r'[a-z]').hasMatch(password);
-  bool get _hasNumber => RegExp(r'\d').hasMatch(password);
-  bool get _hasSymbol =>
-      RegExp(r'[!@#$%^&*(),.?":{}|<>_\-+=/\\[\]؛،~`]').hasMatch(password);
-  bool get _hasIdealLength => password.length > 15;
+//   bool get _hasUppercase => RegExp(r'[A-Z]').hasMatch(password);
+//   bool get _hasLowercase => RegExp(r'[a-z]').hasMatch(password);
+//   bool get _hasNumber => RegExp(r'\d').hasMatch(password);
+//   bool get _hasSymbol =>
+//       RegExp(r'[!@#$%^&*(),.?":{}|<>_\-+=/\\[\]؛،~`]').hasMatch(password);
+//   bool get _hasIdealLength => password.length > 15;
 
-  int get _score {
-    int score = 0;
-    if (_hasUppercase) score++;
-    if (_hasLowercase) score++;
-    if (_hasNumber) score++;
-    if (_hasSymbol) score++;
-    if (password.length >= 8) score++;
-    if (_hasIdealLength) score++;
-    return score;
-  }
+//   int get _score {
+//     int score = 0;
+//     if (_hasUppercase) score++;
+//     if (_hasLowercase) score++;
+//     if (_hasNumber) score++;
+//     if (_hasSymbol) score++;
+//     if (password.length >= 8) score++;
+//     if (_hasIdealLength) score++;
+//     return score;
+//   }
 
-  double get _progress {
-    if (password.isEmpty) return 0;
-    return (_score / 6).clamp(0.0, 1.0);
-  }
+//   double get _progress {
+//     if (password.isEmpty) return 0;
+//     return (_score / 6).clamp(0.0, 1.0);
+//   }
 
-  Color get _color {
-    if (_score <= 2) return const Color(0xFFD94B4B);
-    if (_score <= 4) return const Color(0xFFE2A228);
-    if (_score == 5) return const Color(0xFF2FA6A2);
-    return NabadColors.primary;
-  }
+//   Color get _color {
+//     if (_score <= 2) return const Color(0xFFD94B4B);
+//     if (_score <= 4) return const Color(0xFFE2A228);
+//     if (_score == 5) return const Color(0xFF2FA6A2);
+//     return NabadColors.primary;
+//   }
 
-  String get _label {
-    if (password.isEmpty) return 'ابدأ بكتابة كلمة المرور';
-    if (_score <= 2) return 'ضعيفة';
-    if (_score <= 4) return 'متوسطة';
-    if (_score == 5) return 'قوية';
-    return 'مثالية';
-  }
+//   String get _label {
+//     if (password.isEmpty) return 'ابدأ بكتابة كلمة المرور';
+//     if (_score <= 2) return 'ضعيفة';
+//     if (_score <= 4) return 'متوسطة';
+//     if (_score == 5) return 'قوية';
+//     return 'مثالية';
+//   }
 
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 220),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF4FBFC),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _color.withAlpha(password.isEmpty ? 18 : 55)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              const Text(
-                'قوة كلمة المرور',
-                style: TextStyle(
-                  color: NabadColors.deepTeal,
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              const Spacer(),
-              AnimatedDefaultTextStyle(
-                duration: const Duration(milliseconds: 180),
-                style: TextStyle(
-                  color: _color,
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w900,
-                ),
-                child: Text(_label),
-              ),
-            ],
-          ),
-          const SizedBox(height: 9),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(999),
-            child: LinearProgressIndicator(
-              value: _progress,
-              minHeight: 7,
-              backgroundColor: NabadColors.primary.withAlpha(18),
-              valueColor: AlwaysStoppedAnimation<Color>(_color),
-            ),
-          ),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 7,
-            runSpacing: 7,
-            children: [
-              _PasswordRuleChip(label: 'حرف كبير', isMet: _hasUppercase),
-              _PasswordRuleChip(label: 'حرف صغير', isMet: _hasLowercase),
-              _PasswordRuleChip(label: 'رقم', isMet: _hasNumber),
-              _PasswordRuleChip(label: 'رمز', isMet: _hasSymbol),
-              _PasswordRuleChip(label: '8+ أحرف', isMet: password.length >= 8),
-              _PasswordRuleChip(label: 'مثالية 15+', isMet: _hasIdealLength),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
+//   @override
+//   Widget build(BuildContext context) {
+//     return AnimatedContainer(
+//       duration: const Duration(milliseconds: 220),
+//       padding: const EdgeInsets.all(12),
+//       decoration: BoxDecoration(
+//         color: const Color(0xFFF4FBFC),
+//         borderRadius: BorderRadius.circular(16),
+//         border: Border.all(color: _color.withAlpha(password.isEmpty ? 18 : 55)),
+//       ),
+//       child: Column(
+//         crossAxisAlignment: CrossAxisAlignment.stretch,
+//         children: [
+//           Row(
+//             children: [
+//               const Text(
+//                 'قوة كلمة المرور',
+//                 style: TextStyle(
+//                   color: NabadColors.deepTeal,
+//                   fontSize: 12.5,
+//                   fontWeight: FontWeight.w900,
+//                 ),
+//               ),
+//               const Spacer(),
+//               AnimatedDefaultTextStyle(
+//                 duration: const Duration(milliseconds: 180),
+//                 style: TextStyle(
+//                   color: _color,
+//                   fontSize: 12.5,
+//                   fontWeight: FontWeight.w900,
+//                 ),
+//                 child: Text(_label),
+//               ),
+//             ],
+//           ),
+//           const SizedBox(height: 9),
+//           ClipRRect(
+//             borderRadius: BorderRadius.circular(999),
+//             child: LinearProgressIndicator(
+//               value: _progress,
+//               minHeight: 7,
+//               backgroundColor: NabadColors.primary.withAlpha(18),
+//               valueColor: AlwaysStoppedAnimation<Color>(_color),
+//             ),
+//           ),
+//           const SizedBox(height: 10),
+//           Wrap(
+//             spacing: 7,
+//             runSpacing: 7,
+//             children: [
+//               _PasswordRuleChip(label: 'حرف كبير', isMet: _hasUppercase),
+//               _PasswordRuleChip(label: 'حرف صغير', isMet: _hasLowercase),
+//               _PasswordRuleChip(label: 'رقم', isMet: _hasNumber),
+//               _PasswordRuleChip(label: 'رمز', isMet: _hasSymbol),
+//               _PasswordRuleChip(label: '8+ أحرف', isMet: password.length >= 8),
+//               _PasswordRuleChip(label: 'مثالية 15+', isMet: _hasIdealLength),
+//             ],
+//           ),
+//         ],
+//       ),
+//     );
+//   }
+// }
 
-class _PasswordRuleChip extends StatelessWidget {
-  final String label;
-  final bool isMet;
+// class _PasswordRuleChip extends StatelessWidget {
+//   final String label;
+//   final bool isMet;
 
-  const _PasswordRuleChip({required this.label, required this.isMet});
+//   const _PasswordRuleChip({required this.label, required this.isMet});
 
-  @override
-  Widget build(BuildContext context) {
-    final Color color = isMet ? NabadColors.primary : NabadColors.mutedText;
+//   @override
+//   Widget build(BuildContext context) {
+//     final Color color = isMet ? NabadColors.primary : NabadColors.mutedText;
 
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 180),
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
-      decoration: BoxDecoration(
-        color: isMet ? NabadColors.primary.withAlpha(22) : Colors.white,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withAlpha(isMet ? 60 : 28)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            isMet ? Icons.check_rounded : Icons.circle_outlined,
-            size: 14,
-            color: color,
-          ),
-          const SizedBox(width: 5),
-          Text(
-            label,
-            style: TextStyle(
-              color: color,
-              fontSize: 11.5,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
+//     return AnimatedContainer(
+//       duration: const Duration(milliseconds: 180),
+//       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+//       decoration: BoxDecoration(
+//         color: isMet ? NabadColors.primary.withAlpha(22) : Colors.white,
+//         borderRadius: BorderRadius.circular(999),
+//         border: Border.all(color: color.withAlpha(isMet ? 60 : 28)),
+//       ),
+//       child: Row(
+//         mainAxisSize: MainAxisSize.min,
+//         children: [
+//           Icon(
+//             isMet ? Icons.check_rounded : Icons.circle_outlined,
+//             size: 14,
+//             color: color,
+//           ),
+//           const SizedBox(width: 5),
+//           Text(
+//             label,
+//             style: TextStyle(
+//               color: color,
+//               fontSize: 11.5,
+//               fontWeight: FontWeight.w800,
+//             ),
+//           ),
+//         ],
+//       ),
+//     );
+//   }
+// }
