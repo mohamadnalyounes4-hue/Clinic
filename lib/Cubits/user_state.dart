@@ -12,7 +12,8 @@ class RegisterError extends UserState {
 
 // Login
 class LoginLoading extends UserState {}
-class LoginSuccess extends UserState {}
+class LoginSuccessPatient extends UserState {}
+class LoginSuccessDoctor extends UserState {}
 class LoginError extends UserState {
   final String message;
   LoginError({required this.message});

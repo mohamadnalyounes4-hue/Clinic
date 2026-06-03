@@ -35,13 +35,13 @@ class _PatientLoginScreenState extends State<PatientLoginScreen> {
   }
 
   void _login() {
-  if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate()) return;
 
-  context.read<UserCubit>().login(
-        phone: _phoneController.text.trim(),  // بدون كود الدولة
-        password: _passwordController.text,
-      );
-}
+    context.read<UserCubit>().login(
+      phone: _phoneController.text.trim(), // بدون كود الدولة
+      password: _passwordController.text,
+    );
+  }
 
   String? _validatePhone(String? value) {
     final String phone = value?.trim() ?? '';
@@ -61,10 +61,21 @@ class _PatientLoginScreenState extends State<PatientLoginScreen> {
   Widget build(BuildContext context) {
     return BlocListener<UserCubit, UserState>(
       listener: (context, state) {
-        if (state is LoginSuccess) {
+        if (state is LoginSuccessPatient) {
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (_) => const PatientHomePage()),
+          );
+        }
+        if (state is LoginSuccessDoctor) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text(
+                'هذا الحساب مسجل كطبيب، يرجى تسجيل الدخول كطبيب',
+              ),
+              backgroundColor: Colors.orange.shade700,
+              behavior: SnackBarBehavior.floating,
+            ),
           );
         } else if (state is LoginError) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -84,7 +95,10 @@ class _PatientLoginScreenState extends State<PatientLoginScreen> {
             child: Stack(
               children: [
                 const Positioned(
-                    top: 74, right: -72, child: SoftRing(size: 210)),
+                  top: 74,
+                  right: -72,
+                  child: SoftRing(size: 210),
+                ),
                 Positioned(
                   left: -40,
                   bottom: 90,
@@ -123,7 +137,8 @@ class _PatientLoginScreenState extends State<PatientLoginScreen> {
                           },
                           onTogglePassword: () {
                             setState(
-                                () => _obscurePassword = !_obscurePassword);
+                              () => _obscurePassword = !_obscurePassword,
+                            );
                           },
                           onRememberChanged: (value) {
                             setState(() => _rememberMe = value ?? false);

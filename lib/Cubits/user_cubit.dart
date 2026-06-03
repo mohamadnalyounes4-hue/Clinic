@@ -48,7 +48,11 @@ class UserCubit extends Cubit<UserState> {
       await CacheHelper.saveData(key: ApiKey.token, value: result.token);
       await CacheHelper.saveData(key: ApiKey.id, value: result.user.id);
       await CacheHelper.saveData(key: ApiKey.role, value: result.user.role);
-      emit(LoginSuccess());
+      if (result.user.role == 'doctor') {
+        emit(LoginSuccessDoctor());
+      } else {
+        emit(LoginSuccessPatient());
+      }
     } on ServerExceptions catch (e) {
       emit(LoginError(message: e.errModel.errorMessage));
     }

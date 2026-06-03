@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:nabad/screens/HomePage_patient/homepage_p.dart';
 import 'package:nabad/screens/before_home/account_type_screen.dart';
 import 'package:nabad/screens/before_home/doctor_login_screen.dart';
 import 'package:nabad/screens/before_home/health_information_screen.dart';
@@ -19,6 +20,7 @@ class AppRoutes {
   static const String healthInformation = '/health_information';
   static const String login = '/login';
   static const String doctorHome = '/doctor_home';
+  static const String patientHome = '/patient_home';
 }
 
 class AppRouter {
@@ -44,6 +46,8 @@ class AppRouter {
         );
       case AppRoutes.doctorHome:
         return MaterialPageRoute(builder: (_) => const DoctorHomePage());
+      case AppRoutes.patientHome:
+        return MaterialPageRoute(builder: (_) => const PatientHomePage());
       default:
         return MaterialPageRoute(
           builder: (_) => Scaffold(
