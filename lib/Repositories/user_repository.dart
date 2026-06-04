@@ -1,4 +1,5 @@
 import 'package:nabad/Models/login_model.dart';
+import 'package:nabad/Models/patient_model.dart';
 import 'package:nabad/Models/signUp_model.dart';
 import 'package:nabad/core/Api/api_consumer.dart';
 import 'package:nabad/core/Api/end_points.dart';
@@ -42,10 +43,7 @@ class UserRepository {
     try {
       final response = await api.post(
         EndPoints.login,
-        data: {
-          ApiKey.phone: phone,
-          ApiKey.password: password,
-        },
+        data: {ApiKey.phone: phone, ApiKey.password: password},
       );
       return LoginModel.fromJson(response);
     } on ServerExceptions {
@@ -61,10 +59,7 @@ class UserRepository {
     try {
       final response = await api.post(
         EndPoints.verifyOtp,
-        data: {
-          ApiKey.email: email,
-          'code': code,
-        },
+        data: {ApiKey.email: email, 'code': code},
       );
       return response[ApiKey.message];
     } on ServerExceptions {
@@ -110,7 +105,19 @@ class UserRepository {
   // Logout
   Future<void> logout() async {
     try {
-      await api.post(EndPoints.logout);
+      await api.delete(EndPoints.logout);
+    } on ServerExceptions {
+      rethrow;
+    }
+  }
+
+  // getPatientProfile
+  
+  Future<PatientModel> getPatientProfile() async {
+    try {
+      final response = await api.get(EndPoints.profilePatient);
+      final data = response['data'] ?? response;
+      return PatientModel.fromJson(data);
     } on ServerExceptions {
       rethrow;
     }

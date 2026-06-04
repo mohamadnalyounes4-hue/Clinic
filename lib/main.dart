@@ -1,6 +1,8 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:nabad/Cubits/department_cubit.dart';
+import 'package:nabad/Cubits/doctor_cubit.dart';
 import 'package:nabad/Cubits/user_cubit.dart';
 import 'package:nabad/Repositories/user_repository.dart';
 import 'package:nabad/core/Api/dio_consumer.dart';
@@ -16,32 +18,34 @@ void main() async {
   final role = CacheHelper.getData(key: ApiKey.role);
 
   String initialRoute;
-
   if (token != null) {
     initialRoute = role == 'doctor'
         ? AppRoutes.doctorHome
         : AppRoutes.patientHome;
   } else {
-    initialRoute = AppRoutes.welcome; // ✅ بيرجع للـ welcome لو ما في توكن
+    initialRoute = AppRoutes.welcome;
   }
 
   runApp(NabadApp(initialRoute: initialRoute));
 }
 
 class NabadApp extends StatelessWidget {
-  final String initialRoute; // ✅ نمرره
+  final String initialRoute;
 
   const NabadApp({super.key, required this.initialRoute});
 
   @override
   Widget build(BuildContext context) {
+    final dio = Dio();
+    final api = DioConsumer(dio: dio);
+
     return MultiBlocProvider(
       providers: [
         BlocProvider(
-          create: (_) => UserCubit(
-            userRepository: UserRepository(api: DioConsumer(dio: Dio())),
-          ),
+          create: (_) => UserCubit(userRepository: UserRepository(api: api)),
         ),
+        BlocProvider(create: (_) => DepartmentCubit(api: api)),
+        BlocProvider(create: (_) => DoctorCubit(api: api)),
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
@@ -49,7 +53,7 @@ class NabadApp extends StatelessWidget {
           colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
           useMaterial3: true,
         ),
-        initialRoute: initialRoute, // ✅ بدل AppRoutes.welcome الثابتة
+        initialRoute: initialRoute,
         onGenerateRoute: AppRouter.generateRoute,
       ),
     );

@@ -35,10 +35,7 @@ class UserCubit extends Cubit<UserState> {
   }
 
   // Login
-  Future<void> login({
-    required String phone,
-    required String password,
-  }) async {
+  Future<void> login({required String phone, required String password}) async {
     emit(LoginLoading());
     try {
       final result = await userRepository.login(
@@ -59,10 +56,7 @@ class UserCubit extends Cubit<UserState> {
   }
 
   // Verify OTP
-  Future<void> verifyOtp({
-    required String email,
-    required String code,
-  }) async {
+  Future<void> verifyOtp({required String email, required String code}) async {
     emit(VerifyOtpLoading());
     try {
       await userRepository.verifyOtp(email: email, code: code);
@@ -113,6 +107,17 @@ class UserCubit extends Cubit<UserState> {
       emit(LogoutSuccess());
     } on ServerExceptions catch (e) {
       emit(LogoutError(message: e.errModel.errorMessage));
+    }
+  }
+
+  //getPatientProfile
+  Future<void> getPatientProfile() async {
+    emit(PatientProfileLoading());
+    try {
+      final patient = await userRepository.getPatientProfile();
+      emit(PatientProfileSuccess(patient: patient));
+    } on ServerExceptions catch (e) {
+      emit(PatientProfileError(message: e.errModel.errorMessage));
     }
   }
 }

@@ -1,5 +1,5 @@
 class EndPoints {
-  static String baseUrl = "http://192.168.1.2:8000/api/";      // عالموبايل و بيتغير
+  static String baseUrl = "http://192.168.1.3:8000/api/"; // عالموبايل و بيتغير
   // static String baseUrl = "http://10.0.2.2:8000/api/";          //عالمحاكي
 
   // Auth
@@ -12,7 +12,7 @@ class EndPoints {
   // Patient
   static String completeProfile = "complete_profile";
   static String profilePatient = "profile_patient";
-  static String deletePatient(id) => "patient/$id";
+  static String deletePatient(id) => "delete_patient/$id";
 
   // Departments
   static String departments = "departments";
@@ -24,6 +24,8 @@ class EndPoints {
   static String addDoctor = "doctor";
   static String allDoctors = "all_doctors";
   static String doctorsByDepartment(id) => "doctor_department/$id";
+  static String doctorById(id) => "doctor/$id";
+  static String deleteDoctor(id) => "delete_doctor/$id";
 }
 
 class ApiKey {
@@ -56,4 +58,3 @@ class ApiKey {
   static String profileImage = "profile_image";
   static String userId = "user_id";
 }
-

@@ -1,3 +1,5 @@
+import 'package:nabad/Models/patient_model.dart';
+
 abstract class UserState {}
 
 class UserInitial extends UserState {}
@@ -49,4 +51,17 @@ class LogoutSuccess extends UserState {}
 class LogoutError extends UserState {
   final String message;
   LogoutError({required this.message});
+}
+
+// Patient Profile
+class PatientProfileLoading extends UserState {}
+
+class PatientProfileSuccess extends UserState {
+  final PatientModel patient;
+  PatientProfileSuccess({required this.patient});
+}
+
+class PatientProfileError extends UserState {
+  final String message;
+  PatientProfileError({required this.message});
 }
