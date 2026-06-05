@@ -60,6 +60,10 @@ class _HealthInformationScreenState extends State<HealthInformationScreen> {
       _showSnackBar('حدد الجنس');
       return;
     }
+    if (_bloodType == null) {
+      _showSnackBar('حدد زمرة الدم');
+      return;
+    }
     if (_hasChronicDisease == null) {
       _showSnackBar('حدد هل لديك مرض مزمن');
       return;
@@ -512,18 +516,7 @@ class _HealthFormCard extends StatelessWidget {
             SizedBox(
               height: 56,
               child: ElevatedButton(
-                onPressed: () {
-    // إذا كان عندك متغير isLoading، خليه يشتغل
-    if (isLoading) return;
-
-    // هنا نروح للـ Home Page
-    Navigator.pushReplacement(
-      context,  // لازم يكون context متوفر هون
-      MaterialPageRoute(
-        builder: (context) => const PatientHomePage(), 
-      ),
-    );
-  },
+                onPressed: onContinue,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: NabadColors.primary,
                   foregroundColor: Colors.white,

@@ -528,7 +528,6 @@ class _ProfileContent extends StatelessWidget {
           fontSize: 14,
         ),
       ),
-      // تم استبدالها بـ chevron_right لتتناسب منطقياً مع الواجهات العربية (RTL)
       trailing: const Icon(Icons.chevron_right, color: NabadColors.mutedText),
       onTap: onTap,
     );

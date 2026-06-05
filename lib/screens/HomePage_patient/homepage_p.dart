@@ -162,6 +162,16 @@ class _PatientHomePageState extends State<PatientHomePage> {
         const SizedBox(height: 10),
         BlocBuilder<DoctorCubit, DoctorState>(
           builder: (context, state) {
+            if (state is DoctorInitial) {
+              // لو ما اشتغل الـ fetch لسبب ما، نطلقه هون
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                context.read<DoctorCubit>().getAllDoctors();
+              });
+              return const SizedBox(
+                height: 120,
+                child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+              );
+            }
             if (state is DoctorLoading) {
               return const SizedBox(
                 height: 120,
@@ -200,6 +210,12 @@ class _PatientHomePageState extends State<PatientHomePage> {
   Widget _buildAllDoctors() {
     return BlocBuilder<DoctorCubit, DoctorState>(
       builder: (context, state) {
+        if (state is DoctorInitial) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            context.read<DoctorCubit>().getAllDoctors();
+          });
+          return const Center(child: CircularProgressIndicator());
+        }
         if (state is DoctorLoading) {
           return const Center(child: CircularProgressIndicator());
         }
@@ -239,58 +255,62 @@ class _PatientHomePageState extends State<PatientHomePage> {
   }
 
   Widget _buildProfile() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Navigator.pushNamed(context, AppRoutes.patientProfile);
-      setState(() => _selectedIndex = 0);
-    });
     return const SizedBox.shrink();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: NabadColors.background,
-        body: SafeArea(
-          child: Stack(
-            children: [
-              const Positioned(top: 96, right: -78, child: SoftRing(size: 230)),
-              Positioned(
-                left: -48,
-                bottom: 118,
-                child: IgnorePointer(
-                  child: Opacity(
-                    opacity: 0.045,
-                    child: Image.asset(
-                      'assets/images/logoIcon.png',
-                      width: 220,
-                      height: 220,
-                      fit: BoxFit.contain,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        // منع الرجوع للـ welcome — الضغط على باك بيطلع من التطبيق
+        if (!didPop) {
+          // لا نفعل شيء، أو يمكن إظهار dialog "هل تريد الخروج؟"
+        }
+      },
+      child: Directionality(
+        textDirection: TextDirection.rtl,
+        child: Scaffold(
+          backgroundColor: NabadColors.background,
+          body: SafeArea(
+            child: Stack(
+              children: [
+                const Positioned(top: 96, right: -78, child: SoftRing(size: 230)),
+                Positioned(
+                  left: -48,
+                  bottom: 118,
+                  child: IgnorePointer(
+                    child: Opacity(
+                      opacity: 0.045,
+                      child: Image.asset(
+                        'assets/images/logoIcon.png',
+                        width: 220,
+                        height: 220,
+                        fit: BoxFit.contain,
+                      ),
                     ),
                   ),
                 ),
-              ),
-              _buildCurrentPage(),
-            ],
+                _buildCurrentPage(),
+              ],
+            ),
           ),
-        ),
-        bottomNavigationBar: _PatientBottomBar(
-          selectedIndex: _selectedIndex,
-          onChanged: (index) {
-            if (index == 3) {
-              Navigator.pushNamed(context, AppRoutes.patientProfile);
-            } else {
-              setState(() => _selectedIndex = index);
-              if (index == 0) {
-                context.read<DoctorCubit>().getAllDoctors();
+          bottomNavigationBar: _PatientBottomBar(
+            selectedIndex: _selectedIndex,
+            onChanged: (index) {
+              if (index == 3) {
+                Navigator.pushNamed(context, AppRoutes.patientProfile);
+              } else {
+                setState(() => _selectedIndex = index);
+                if (index == 0) {
+                  context.read<DoctorCubit>().getAllDoctors();
+                }
+                if (index == 1) {
+                  context.read<DoctorCubit>().getAllDoctors();
+                }
               }
-              // لما يضغط تاب الأطباء
-              if (index == 1) {
-                context.read<DoctorCubit>().getAllDoctors();
-              }
-            }
-          },
+            },
+          ),
         ),
       ),
     );

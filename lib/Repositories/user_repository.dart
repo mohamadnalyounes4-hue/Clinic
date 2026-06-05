@@ -105,7 +105,7 @@ class UserRepository {
   // Logout
   Future<void> logout() async {
     try {
-      await api.delete(EndPoints.logout);
+      await api.post(EndPoints.logout);
     } on ServerExceptions {
       rethrow;
     }

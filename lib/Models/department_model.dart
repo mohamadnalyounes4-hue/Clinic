@@ -10,7 +10,7 @@ class DepartmentModel {
   factory DepartmentModel.fromJson(Map<String, dynamic> json) {
     return DepartmentModel(
       id: json['id'],
-      department_name: json['department_name'] ?? json['department_name'] ?? '',
+      department_name: json['department_name'] ?? '',
     );
   }
 }
