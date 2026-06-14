@@ -7,8 +7,11 @@ import 'package:nabad/Cubits/user_cubit.dart';
 import 'package:nabad/Cubits/user_state.dart';
 import 'package:nabad/Models/department_model.dart';
 import 'package:nabad/Models/doctor_model.dart';
-import 'package:nabad/core/router/app_router.dart';
 import 'package:nabad/core/theme/nabad_colors.dart';
+import 'package:nabad/screens/HomePage_patient/patient_profile_screen.dart';
+import 'package:nabad/screens/doctors/doctor_profile_booking_screen.dart';
+import 'package:nabad/screens/doctors/appointments_screen.dart';
+import 'package:nabad/screens/doctors/doctors_screen.dart';
 import 'package:nabad/widgets/soft_ring.dart';
 
 class PatientHomePage extends StatefulWidget {
@@ -208,54 +211,18 @@ class _PatientHomePageState extends State<PatientHomePage> {
 
   // تاب الاطباء
   Widget _buildAllDoctors() {
-    return BlocBuilder<DoctorCubit, DoctorState>(
-      builder: (context, state) {
-        if (state is DoctorInitial) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            context.read<DoctorCubit>().getAllDoctors();
-          });
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (state is DoctorLoading) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (state is DoctorError) {
-          return Center(
-            child: _ErrorRetry(
-              message: state.message,
-              onRetry: () => context.read<DoctorCubit>().getAllDoctors(),
-            ),
-          );
-        }
-        if (state is DoctorSuccess) {
-          return ListView.separated(
-            padding: const EdgeInsets.all(20),
-            itemCount: state.doctors.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 12),
-            itemBuilder: (_, i) => _DoctorCard(doctor: state.doctors[i]),
-          );
-        }
-        return const SizedBox.shrink();
-      },
+    return const Directionality(
+      textDirection: TextDirection.ltr,
+      child: DoctorsScreen(),
     );
   }
 
   Widget _buildAppointments() {
-    return const Center(
-      child: Text(
-        'مواعيدي\nقريباً',
-        textAlign: TextAlign.center,
-        style: TextStyle(
-          color: NabadColors.mutedText,
-          fontSize: 18,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-    );
+    return const AppointmentsScreen();
   }
 
   Widget _buildProfile() {
-    return const SizedBox.shrink();
+    return const PatientProfileScreen();
   }
 
   @override
@@ -275,7 +242,11 @@ class _PatientHomePageState extends State<PatientHomePage> {
           body: SafeArea(
             child: Stack(
               children: [
-                const Positioned(top: 96, right: -78, child: SoftRing(size: 230)),
+                const Positioned(
+                  top: 96,
+                  right: -78,
+                  child: SoftRing(size: 230),
+                ),
                 Positioned(
                   left: -48,
                   bottom: 118,
@@ -298,16 +269,15 @@ class _PatientHomePageState extends State<PatientHomePage> {
           bottomNavigationBar: _PatientBottomBar(
             selectedIndex: _selectedIndex,
             onChanged: (index) {
+              setState(() => _selectedIndex = index);
+              if (index == 0) {
+                context.read<DoctorCubit>().getAllDoctors();
+              }
+              if (index == 1) {
+                context.read<DoctorCubit>().getAllDoctors();
+              }
               if (index == 3) {
-                Navigator.pushNamed(context, AppRoutes.patientProfile);
-              } else {
-                setState(() => _selectedIndex = index);
-                if (index == 0) {
-                  context.read<DoctorCubit>().getAllDoctors();
-                }
-                if (index == 1) {
-                  context.read<DoctorCubit>().getAllDoctors();
-                }
+                context.read<UserCubit>().getPatientProfile();
               }
             },
           ),
@@ -442,113 +412,130 @@ class _DoctorCard extends StatelessWidget {
 
   const _DoctorCard({required this.doctor});
 
+  void _openDoctorDetails(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => DoctorProfileBookingScreen(doctor: doctor),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white.withAlpha(238),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => _openDoctorDetails(context),
         borderRadius: BorderRadius.circular(26),
-        border: Border.all(color: NabadColors.primary.withAlpha(14)),
-        boxShadow: [
-          BoxShadow(
-            color: NabadColors.primary.withAlpha(10),
-            blurRadius: 18,
-            offset: const Offset(0, 10),
+        child: Ink(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: Colors.white.withAlpha(238),
+            borderRadius: BorderRadius.circular(26),
+            border: Border.all(color: NabadColors.primary.withAlpha(14)),
+            boxShadow: [
+              BoxShadow(
+                color: NabadColors.primary.withAlpha(10),
+                blurRadius: 18,
+                offset: const Offset(0, 10),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: Row(
-        children: [
-          // صورة الطبيب
-          ClipRRect(
-            borderRadius: BorderRadius.circular(22),
-            child: doctor.profileImage != null
-                ? Image.network(
-                    doctor.profileImage!,
-                    width: 72,
-                    height: 72,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) =>
-                        _AvatarFallback(initials: _initials(doctor.fullName)),
-                    loadingBuilder: (_, child, progress) {
-                      if (progress == null) return child;
-                      return Container(
+          child: Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(22),
+                child: doctor.profileImage != null
+                    ? Image.network(
+                        doctor.profileImage!,
                         width: 72,
                         height: 72,
-                        color: const Color(0xFFC9F3F8),
-                        child: const Center(
-                          child: CircularProgressIndicator(strokeWidth: 2),
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => _AvatarFallback(
+                          initials: _initials(doctor.fullName),
                         ),
-                      );
-                    },
-                  )
-                : _AvatarFallback(initials: _initials(doctor.fullName)),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Dr. ${doctor.fullName}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: NabadColors.darkText,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 5),
-                Text(
-                  doctor.specialization ?? '',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: NabadColors.mutedText,
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                if (doctor.yearsOfExperience != null) ...[
-                  const SizedBox(height: 7),
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.workspace_premium_rounded,
-                        color: Color(0xFFE2A228),
-                        size: 16,
+                        loadingBuilder: (_, child, progress) {
+                          if (progress == null) return child;
+                          return Container(
+                            width: 72,
+                            height: 72,
+                            color: const Color(0xFFC9F3F8),
+                            child: const Center(
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                          );
+                        },
+                      )
+                    : _AvatarFallback(initials: _initials(doctor.fullName)),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Dr. ${doctor.fullName}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: NabadColors.darkText,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
                       ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${doctor.yearsOfExperience} سنوات خبرة',
-                        style: const TextStyle(
-                          color: Color(0xFFE2A228),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w900,
-                        ),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      doctor.specialization ?? '',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: NabadColors.mutedText,
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    if (doctor.yearsOfExperience != null) ...[
+                      const SizedBox(height: 7),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.workspace_premium_rounded,
+                            color: Color(0xFFE2A228),
+                            size: 16,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${doctor.yearsOfExperience} سنوات خبرة',
+                            style: const TextStyle(
+                              color: Color(0xFFE2A228),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
-                  ),
-                ],
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          IconButton.outlined(
-            onPressed: () {},
-            style: IconButton.styleFrom(
-              foregroundColor: NabadColors.primary,
-              side: BorderSide(color: NabadColors.primary.withAlpha(35)),
-              fixedSize: const Size(42, 42),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
+                  ],
+                ),
               ),
-            ),
-            icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 17),
+              const SizedBox(width: 8),
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: NabadColors.primary.withAlpha(35)),
+                ),
+                child: const Icon(
+                  Icons.arrow_back_ios_new_rounded,
+                  size: 17,
+                  color: NabadColors.primary,
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

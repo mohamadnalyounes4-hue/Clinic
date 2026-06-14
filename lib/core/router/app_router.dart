@@ -9,6 +9,12 @@ import 'package:nabad/screens/before_home/otp_code_screen.dart';
 import 'package:nabad/screens/before_home/patient_login_screen.dart';
 import 'package:nabad/screens/before_home/register_screen.dart';
 import 'package:nabad/screens/HomePage_doctor/homepage_d.dart';
+import 'package:nabad/Models/doctor_directory_model.dart';
+import 'package:nabad/Models/doctor_model.dart';
+import 'package:nabad/screens/doctors/appointments_screen.dart';
+import 'package:nabad/screens/doctors/booking_detail_screen.dart';
+import 'package:nabad/screens/doctors/doctor_profile_booking_screen.dart';
+import 'package:nabad/screens/doctors/doctors_screen.dart';
 
 class AppRoutes {
   static const String welcome = '/';
@@ -23,6 +29,10 @@ class AppRoutes {
   static const String doctorHome = '/doctor_home';
   static const String patientHome = '/patient_home';
   static const String patientProfile = '/patient_profile';
+  static const String doctors = '/doctors';
+  static const String appointments = '/appointments';
+  static const String bookingDetail = '/booking_detail';
+  static const String doctorProfileBooking = '/doctor_profile_booking';
 }
 
 class AppRouter {
@@ -52,6 +62,26 @@ class AppRouter {
         return MaterialPageRoute(builder: (_) => const PatientHomePage());
       case AppRoutes.patientProfile:
         return MaterialPageRoute(builder: (_) => const PatientProfileScreen());
+      case AppRoutes.doctors:
+        return MaterialPageRoute(builder: (_) => const DoctorsScreen());
+      case AppRoutes.appointments:
+        return MaterialPageRoute(builder: (_) => const AppointmentsScreen());
+      case AppRoutes.bookingDetail:
+        final doctor = settings.arguments;
+        if (doctor is Doctor) {
+          return MaterialPageRoute(
+            builder: (_) => BookingDetailScreen(doctor: doctor),
+          );
+        }
+        return MaterialPageRoute(builder: (_) => const DoctorsScreen());
+      case AppRoutes.doctorProfileBooking:
+        final doctor = settings.arguments;
+        if (doctor is DoctorModel) {
+          return MaterialPageRoute(
+            builder: (_) => DoctorProfileBookingScreen(doctor: doctor),
+          );
+        }
+        return MaterialPageRoute(builder: (_) => const PatientHomePage());
       default:
         return MaterialPageRoute(
           builder: (_) => Scaffold(

@@ -14,10 +14,7 @@ class DoctorCubit extends Cubit<DoctorState> {
     emit(DoctorLoading());
     try {
       final response = await api.get(EndPoints.allDoctors);
-      final List data = response['data'];
-      final doctors = data
-          .map((e) => DoctorModel.fromJson(e as Map<String, dynamic>))
-          .toList();
+      final doctors = _doctorsFromResponse(response);
       emit(DoctorSuccess(doctors: doctors));
     } on ServerExceptions catch (e) {
       emit(DoctorError(message: e.errModel.errorMessage));
@@ -32,15 +29,22 @@ class DoctorCubit extends Cubit<DoctorState> {
       final response = await api.get(
         EndPoints.doctorsByDepartment(departmentId),
       );
-      final List data = response['data'];
-      final doctors = data
-          .map((e) => DoctorModel.fromJson(e as Map<String, dynamic>))
-          .toList();
+      final doctors = _doctorsFromResponse(response);
       emit(DoctorSuccess(doctors: doctors));
     } on ServerExceptions catch (e) {
       emit(DoctorError(message: e.errModel.errorMessage));
     } catch (e) {
       emit(DoctorError(message: 'حدث خطأ في جلب أطباء التخصص'));
     }
+  }
+
+  List<DoctorModel> _doctorsFromResponse(dynamic response) {
+    final dynamic rawData = response is List ? response : response['data'];
+    if (rawData is! List) return [];
+
+    return rawData
+        .whereType<Map<String, dynamic>>()
+        .map(DoctorModel.fromJson)
+        .toList();
   }
 }

@@ -6,13 +6,29 @@ import 'package:nabad/Models/patient_model.dart';
 import 'package:nabad/core/router/app_router.dart';
 import 'package:nabad/core/theme/nabad_colors.dart';
 
-class PatientProfileScreen extends StatelessWidget {
+class PatientProfileScreen extends StatefulWidget {
   const PatientProfileScreen({super.key});
+
+  @override
+  State<PatientProfileScreen> createState() => _PatientProfileScreenState();
+}
+
+class _PatientProfileScreenState extends State<PatientProfileScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final state = context.read<UserCubit>().state;
+      if (state is! PatientProfileSuccess && state is! PatientProfileLoading) {
+        context.read<UserCubit>().getPatientProfile();
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FBFB), 
+      backgroundColor: const Color(0xFFF8FBFB),
       body: BlocConsumer<UserCubit, UserState>(
         listener: (context, state) {
           if (state is LogoutSuccess) {
@@ -63,7 +79,7 @@ class PatientProfileScreen extends StatelessWidget {
           if (state is PatientProfileSuccess) {
             return _ProfileContent(patient: state.patient);
           }
-          return const SizedBox.shrink();
+          return const Center(child: CircularProgressIndicator());
         },
       ),
     );
@@ -92,8 +108,19 @@ class _ProfileContent extends StatelessWidget {
       final parts = d.split('-');
       if (parts.length != 3) return d;
       const months = [
-        '', 'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
-        'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر',
+        '',
+        'يناير',
+        'فبراير',
+        'مارس',
+        'أبريل',
+        'مايو',
+        'يونيو',
+        'يوليو',
+        'أغسطس',
+        'سبتمبر',
+        'أكتوبر',
+        'نوفمبر',
+        'ديسمبر',
       ];
       final month = int.tryParse(parts[1]) ?? 0;
       return '${parts[2]} ${months[month]} ${parts[0]}';
