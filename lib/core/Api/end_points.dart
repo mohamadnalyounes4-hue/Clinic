@@ -1,5 +1,5 @@
 class EndPoints {
-  static String baseUrl = "http://10.135.6.185:8000/api/"; // عالموبايل و بيتغير
+  static String baseUrl = "http://192.168.1.3:8000/api/"; // عالموبايل و بيتغير
   // static String baseUrl = "http://10.0.2.2:8000/api/";          //عالمحاكي
 
   // Auth

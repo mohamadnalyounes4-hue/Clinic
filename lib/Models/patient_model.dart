@@ -21,18 +21,26 @@ class PatientModel {
   });
 
   factory PatientModel.fromJson(Map<String, dynamic> json) {
+    // الباك إند بيرجع بيانات الـ user flat (first_name, last_name, email...)
+    // مش nested جوا 'user' أو 'User'
+    final userJson = json['User'] ?? json['user'] ?? {
+      'id': json[ApiKey.userId] ?? 0,
+      'first_name': json[ApiKey.firstName],
+      'last_name': json[ApiKey.lastName],
+      'email': json[ApiKey.email],
+      'phone': json[ApiKey.phone],
+      'role': json[ApiKey.role],
+      'email_verified_at': json[ApiKey.emailVerifiedAt],
+    };
+
     return PatientModel(
-      id: json[ApiKey.id],
-      userId: json[ApiKey.userId],
+      id: json[ApiKey.id] ?? 0,
+      userId: json[ApiKey.userId] ?? 0,
       gender: json[ApiKey.gender],
       birthDate: json[ApiKey.birthDate],
       address: json[ApiKey.address],
       bloodType: json[ApiKey.bloodType],
-      // الباك بيرجع 'User' بـ uppercase لأن العلاقة اسمها User في الـ model
-      // نتعامل مع الحالتين
-      user: UserModel.fromJson(
-        json['User'] ?? json['user'],
-      ),
+      user: UserModel.fromJson(userJson),
     );
   }
 }

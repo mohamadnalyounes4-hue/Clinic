@@ -21,12 +21,12 @@ class UserModel {
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(
-      id: json[ApiKey.id],
-      firstName: json[ApiKey.firstName],
-      lastName: json[ApiKey.lastName],
-      email: json[ApiKey.email],
-      phone: json[ApiKey.phone],
-      role: json[ApiKey.role],
+      id: json[ApiKey.id] ?? 0,
+      firstName: json[ApiKey.firstName] ?? '',
+      lastName: json[ApiKey.lastName] ?? '',
+      email: json[ApiKey.email] ?? '',
+      phone: json[ApiKey.phone] ?? '',
+      role: json[ApiKey.role] ?? '',
       emailVerifiedAt: json[ApiKey.emailVerifiedAt],
     );
   }
