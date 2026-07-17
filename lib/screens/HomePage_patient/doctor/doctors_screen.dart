@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../Cubits/clinic_states.dart';
-import '../../Cubits/doctor_cubit.dart';
-import '../../Models/doctor_directory_model.dart';
-import '../../Models/doctor_model.dart';
-import '../../core/theme/nabd_colors.dart';
-import '../../widgets/doctors/doctor_card.dart';
-import '../../widgets/doctors/specialty_filter_bar.dart';
-import 'booking_detail_screen.dart';
+import '../../../Cubits/states/clinic_states.dart';
+import '../../../Cubits/cubits/doctor_cubit.dart';
+import '../../../Models/doctor_directory_model.dart';
+import '../../../Models/doctor_model.dart';
+import '../../../core/theme/nabd_colors.dart';
+import '../../../widgets/doctors/doctor_card.dart';
+import '../../../widgets/doctors/specialty_filter_bar.dart';
+import '../booking_detail_screen.dart';
 import 'doctor_profile_booking_screen.dart';
 
 class DoctorsScreen extends StatefulWidget {
@@ -165,7 +165,7 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
                                 context,
                                 MaterialPageRoute(
                                   builder: (_) =>
-                                      BookingDetailScreen(doctor: doctor),
+                                      BookingDetailScreen(doctor: doctorModel),
                                 ),
                               );
                             },

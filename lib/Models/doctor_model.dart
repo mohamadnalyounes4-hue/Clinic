@@ -9,6 +9,8 @@ class DoctorModel {
   final String? certificate;
   final int? yearsOfExperience;
   final String? profileImage;
+  final double? consultationFee;
+  final int? consultationDuration;
   final UserModel user;
 
   DoctorModel({
@@ -19,6 +21,8 @@ class DoctorModel {
     this.certificate,
     this.yearsOfExperience,
     this.profileImage,
+    this.consultationFee,
+    this.consultationDuration,
     required this.user,
   });
 
@@ -57,8 +61,17 @@ class DoctorModel {
       profileImage: _buildImageUrl(
         json[ApiKey.profileImage] ?? json['profile_image'],
       ),
+      consultationFee: _toDouble(json['consultation_fee']),
+      consultationDuration: json['consultation_duration'],
       user: userModel,
     );
+  }
+
+  static double? _toDouble(dynamic value) {
+    if (value == null) return null;
+    if (value is num) return value.toDouble();
+    if (value is String) return double.tryParse(value);
+    return null;
   }
 
   // الباك بيرجع full URL من asset() في DoctorResource

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:nabad/Cubits/user_cubit.dart';
-import 'package:nabad/Cubits/user_state.dart';
+import 'package:nabad/Cubits/cubits/user_cubit.dart';
+import 'package:nabad/Cubits/states/user_state.dart';
 import 'package:nabad/core/router/app_router.dart';
 import 'package:nabad/core/theme/nabad_colors.dart';
 import 'package:nabad/screens/HomePage_patient/homepage_p.dart';

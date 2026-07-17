@@ -63,7 +63,50 @@ class _DoctorHomePageState extends State<DoctorHomePage> {
               ),
               ListView(
                 padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-                children: [
+                children: _buildCurrentPageChildren(),
+              ),
+            ],
+          ),
+        ),
+        bottomNavigationBar: _DoctorBottomBar(
+          selectedIndex: _selectedIndex,
+          onChanged: (index) => setState(() => _selectedIndex = index),
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _buildCurrentPageChildren() {
+    switch (_selectedIndex) {
+      case 1:
+        return _buildAppointmentsPage();
+      case 2:
+        return const [
+          _DoctorHeader(),
+          SizedBox(height: 18),
+          _PlaceholderPanel(
+            icon: Icons.groups_rounded,
+            title: 'المرضى',
+            message: 'سيظهر هنا سجل المرضى عند ربطه مع الواجهة الخلفية.',
+          ),
+        ];
+      case 3:
+        return const [
+          _DoctorHeader(),
+          SizedBox(height: 18),
+          _PlaceholderPanel(
+            icon: Icons.person_rounded,
+            title: 'الحساب',
+            message: 'سيظهر هنا ملف الطبيب وإعدادات الحساب.',
+          ),
+        ];
+      default:
+        return _buildDashboardPage();
+    }
+  }
+
+  List<Widget> _buildDashboardPage() {
+    return [
                   const _DoctorHeader(),
                   const SizedBox(height: 18),
                   const _TodayOverview(),
@@ -88,17 +131,25 @@ class _DoctorHomePageState extends State<DoctorHomePage> {
                       child: _AppointmentTile(appointment: appointment),
                     ),
                   ),
-                ],
-              ),
-            ],
-          ),
-        ),
-        bottomNavigationBar: _DoctorBottomBar(
-          selectedIndex: _selectedIndex,
-          onChanged: (index) => setState(() => _selectedIndex = index),
+                ];
+  }
+
+  List<Widget> _buildAppointmentsPage() {
+    return [
+      const _DoctorHeader(),
+      const SizedBox(height: 18),
+      const _SectionHeader(
+        title: 'مواعيد اليوم',
+        actionLabel: 'تحديث',
+      ),
+      const SizedBox(height: 10),
+      ..._appointments.map(
+        (appointment) => Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: _AppointmentTile(appointment: appointment),
         ),
       ),
-    );
+    ];
   }
 }
 
@@ -266,17 +317,18 @@ class _OverviewMetric extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 92,
+      constraints: const BoxConstraints(minHeight: 92),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white.withAlpha(235),
         borderRadius: BorderRadius.circular(22),
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(icon, color: NabadColors.primary, size: 22),
-          const Spacer(),
+          const SizedBox(height: 8),
           Text(
             value,
             style: const TextStyle(
@@ -410,6 +462,64 @@ class _SectionHeader extends StatelessWidget {
           child: Text(actionLabel),
         ),
       ],
+    );
+  }
+}
+
+class _PlaceholderPanel extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String message;
+
+  const _PlaceholderPanel({
+    required this.icon,
+    required this.title,
+    required this.message,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        color: Colors.white.withAlpha(238),
+        borderRadius: BorderRadius.circular(26),
+        border: Border.all(color: NabadColors.primary.withAlpha(18)),
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: 62,
+            height: 62,
+            decoration: BoxDecoration(
+              color: NabadColors.softTeal,
+              borderRadius: BorderRadius.circular(22),
+            ),
+            child: Icon(icon, color: NabadColors.primary, size: 30),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            title,
+            style: const TextStyle(
+              color: NabadColors.darkText,
+              fontSize: 18,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: NabadColors.mutedText,
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              height: 1.45,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:nabad/Models/doctor_directory_model.dart';
 import 'package:nabad/Models/doctor_model.dart';
 import 'package:nabad/core/theme/nabad_colors.dart';
-import 'package:nabad/screens/doctors/booking_detail_screen.dart';
+import 'package:nabad/screens/HomePage_patient/booking_detail_screen.dart';
 
 class DoctorProfileBookingScreen extends StatelessWidget {
   final DoctorModel doctor;
@@ -38,7 +37,7 @@ class DoctorProfileBookingScreen extends StatelessWidget {
       child: Scaffold(
         backgroundColor: NabadColors.background,
         bottomNavigationBar: _BookingBottomBar(
-          price: 250,
+          price: (doctor.consultationFee ?? 0).toInt(),
           onBook: () => _openBookingDetails(context),
         ),
         body: SafeArea(
@@ -70,23 +69,7 @@ class DoctorProfileBookingScreen extends StatelessWidget {
   void _openBookingDetails(BuildContext context) {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => BookingDetailScreen(doctor: _bookingDoctor),
-      ),
-    );
-  }
-
-  Doctor get _bookingDoctor {
-    return Doctor(
-      id: doctor.id.toString(),
-      name: _doctorName,
-      specialty: _specialty,
-      hospital: doctor.certificate?.trim().isNotEmpty == true
-          ? doctor.certificate!.trim()
-          : 'Nabad Clinic',
-      rating: 4.9,
-      price: 250,
-      imagePath: doctor.profileImage ?? 'assets/images/Male.jpg',
+      MaterialPageRoute(builder: (_) => BookingDetailScreen(doctor: doctor)),
     );
   }
 }
@@ -473,7 +456,7 @@ class _BookingBottomBar extends StatelessWidget {
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  '$price ريال',
+                  '$price ',
                   style: const TextStyle(
                     color: NabadColors.primary,
                     fontSize: 17,

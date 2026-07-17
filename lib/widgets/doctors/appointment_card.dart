@@ -3,21 +3,28 @@ import '../../Models/appointment_model.dart';
 import '../../core/theme/nabd_colors.dart';
 
 class AppointmentCard extends StatelessWidget {
-  final Appointment appointment;
-  final VoidCallback onCancel; // ✅ جديد
-  final VoidCallback onReschedule; // ✅ جديد
+  final AppointmentModel appointment;
+  final VoidCallback onReschedule;
+  final VoidCallback onRate; // تقييم الطبيب بعد اكتمال الموعد
 
   const AppointmentCard({
     super.key,
     required this.appointment,
-    required this.onCancel,
     required this.onReschedule,
+    required this.onRate,
   });
 
   @override
   Widget build(BuildContext context) {
-    final isPending = appointment.status == 'pending';
-    final isCanceled = appointment.status == 'canceled';
+    // حسب توثيق الباك، حالات الموعد الفعلية: confirmed, cancelled,
+    // completed, no_show. مفيش "pending".
+    final isConfirmed = appointment.status == 'confirmed';
+    // نشطة فعليًا: مؤكدة وميعادها ما جاش لسه (فيها إعادة جدولة بس)
+    final isActive = isConfirmed && !appointment.isPastScheduledTime;
+    // عدّى وقتها بس لسه مؤكدة بالباك (العيادة ما أكدتش الإكمال رسميًا بعد)
+    final isPastUnconfirmed = isConfirmed && appointment.isPastScheduledTime;
+    final isCanceled = appointment.isCanceled;
+    final isNoShow = appointment.isNoShow;
 
     return Card(
       color: NabadColors.white,
@@ -39,25 +46,7 @@ class AppointmentCard extends StatelessWidget {
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(12),
-                  child: Image.asset(
-                    appointment.imagePath,
-                    width: 64,
-                    height: 64,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
-                      width: 64,
-                      height: 64,
-                      decoration: BoxDecoration(
-                        color: NabadColors.softTeal,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(
-                        Icons.person_rounded,
-                        color: NabadColors.primary,
-                        size: 34,
-                      ),
-                    ),
-                  ),
+                  child: _AppointmentImage(imagePath: appointment.imagePath),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -152,20 +141,16 @@ class AppointmentCard extends StatelessWidget {
             const SizedBox(height: 8),
             const Divider(color: NabadColors.divider, height: 1),
 
-            // ✅ أزرار للمعلق / شارة للملغى أو المكتمل
-            if (isPending)
+            if (isActive)
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  TextButton(
-                    onPressed: onCancel,
-                    child: const Text(
-                      'إلغاء الموعد',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFFE53935),
-                      ),
+                  Text(
+                    'للإلغاء تواصل مع العيادة',
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      color: NabadColors.mutedText.withOpacity(0.85),
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                   TextButton(
@@ -182,37 +167,144 @@ class AppointmentCard extends StatelessWidget {
                 ],
               ),
 
-            if (!isPending)
+            if (!isActive)
               Padding(
                 padding: const EdgeInsets.only(top: 8),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 5,
-                    ),
-                    decoration: BoxDecoration(
-                      color: isCanceled
-                          ? const Color(0xFFFFEBEE)
-                          : const Color(0xFFE8F5E9),
-                      borderRadius: BorderRadius.circular(50),
-                    ),
-                    child: Text(
-                      isCanceled ? 'ملغى' : 'مكتمل',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    if (appointment.canRate)
+                      TextButton.icon(
+                        onPressed: onRate,
+                        icon: const Icon(
+                          Icons.star_outline_rounded,
+                          size: 18,
+                          color: Color(0xFFF5A623),
+                        ),
+                        label: const Text(
+                          'قيّم الطبيب',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFFF5A623),
+                          ),
+                        ),
+                      )
+                    else if (appointment.rating != null)
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.star_rounded,
+                            size: 18,
+                            color: Color(0xFFF5A623),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'تقييمك: ${appointment.rating}/10',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: NabadColors.mutedText,
+                            ),
+                          ),
+                        ],
+                      )
+                    else
+                      const SizedBox.shrink(),
+
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
                         color: isCanceled
-                            ? const Color(0xFFE53935)
-                            : const Color(0xFF2E7D32),
+                            ? const Color(0xFFFFEBEE)
+                            : isNoShow
+                            ? const Color(0xFFF0F0F0)
+                            : isPastUnconfirmed
+                            ? const Color(0xFFFFF3E0)
+                            : const Color(0xFFE8F5E9),
+                        borderRadius: BorderRadius.circular(50),
+                      ),
+                      child: Text(
+                        isCanceled
+                            ? 'ملغى'
+                            : isNoShow
+                            ? 'لم يحضر'
+                            : isPastUnconfirmed
+                            ? 'بانتظار تأكيد العيادة'
+                            : 'مكتمل',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: isCanceled
+                              ? const Color(0xFFE53935)
+                              : isNoShow
+                              ? const Color(0xFF757575)
+                              : isPastUnconfirmed
+                              ? const Color(0xFFEF6C00)
+                              : const Color(0xFF2E7D32),
+                        ),
                       ),
                     ),
-                  ),
+                  ],
                 ),
               ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _AppointmentImage extends StatelessWidget {
+  final String imagePath;
+
+  const _AppointmentImage({required this.imagePath});
+
+  @override
+  Widget build(BuildContext context) {
+    if (imagePath.startsWith('http')) {
+      return Image.network(
+        imagePath,
+        width: 64,
+        height: 64,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => const _AppointmentImageFallback(),
+      );
+    }
+
+    if (imagePath.isNotEmpty) {
+      return Image.asset(
+        imagePath,
+        width: 64,
+        height: 64,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => const _AppointmentImageFallback(),
+      );
+    }
+
+    return const _AppointmentImageFallback();
+  }
+}
+
+class _AppointmentImageFallback extends StatelessWidget {
+  const _AppointmentImageFallback();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 64,
+      height: 64,
+      decoration: BoxDecoration(
+        color: NabadColors.softTeal,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: const Icon(
+        Icons.person_rounded,
+        color: NabadColors.primary,
+        size: 34,
       ),
     );
   }

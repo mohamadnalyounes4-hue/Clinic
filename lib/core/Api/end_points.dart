@@ -1,5 +1,5 @@
 class EndPoints {
-  static String baseUrl = "http://192.168.1.3:8000/api/"; // عالموبايل و بيتغير
+  static String baseUrl = "http://192.168.35.41:8000/api/"; // عالموبايل و بيتغير
   // static String baseUrl = "http://10.0.2.2:8000/api/";          //عالمحاكي
 
   // Auth
@@ -26,6 +26,25 @@ class EndPoints {
   static String doctorsByDepartment(id) => "doctor_department/$id";
   static String doctorById(id) => "doctor/$id";
   static String deleteDoctor(id) => "delete_doctor/$id";
+
+  // Appointments
+  static String appointments = "appointments"; // GET (list) / POST (book)
+  static String updateAppointment(id) =>
+      "appointments/$id"; // PUT (reschedule) — بس لو confirmed
+  static String rateAppointment(id) =>
+      "appointments/$id/rate"; // POST — بس لو completed
+
+  // "appointments_cancel/{id}" مسجل تحت صلاحية secretary فقط.
+  // "المريض لا يملك route إلغاء مباشر" — نص صريح من الباك إند.
+  static String cancelAppointment(id) => "appointments_cancel/$id";
+
+  // Loyalty Points
+  static String points = "points";
+  static String pointsPreview = "points/preview";
+
+  // Wallet
+  static String wallet = "wallet";
+  static String walletTransactions = "wallet/transactions";
 }
 
 class ApiKey {

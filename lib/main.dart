@@ -1,9 +1,12 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:nabad/Cubits/department_cubit.dart';
-import 'package:nabad/Cubits/doctor_cubit.dart';
-import 'package:nabad/Cubits/user_cubit.dart';
+import 'package:nabad/Cubits/cubits/appointment_cubit.dart';
+import 'package:nabad/Cubits/cubits/department_cubit.dart';
+import 'package:nabad/Cubits/cubits/doctor_cubit.dart';
+import 'package:nabad/Cubits/cubits/points_cubit.dart';
+import 'package:nabad/Cubits/cubits/user_cubit.dart';
+import 'package:nabad/Cubits/cubits/wallet_cubit.dart';
 import 'package:nabad/Repositories/user_repository.dart';
 import 'package:nabad/core/Api/dio_consumer.dart';
 import 'package:nabad/core/Api/end_points.dart';
@@ -46,6 +49,9 @@ class NabadApp extends StatelessWidget {
         ),
         BlocProvider(create: (_) => DepartmentCubit(api: api)),
         BlocProvider(create: (_) => DoctorCubit(api: api)),
+        BlocProvider(create: (_) => AppointmentCubit(api: api)),
+        BlocProvider(create: (_) => PointsCubit(api: api)),
+        BlocProvider(create: (_) => WalletCubit(api: api)),
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,

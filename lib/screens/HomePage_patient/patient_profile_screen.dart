@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:nabad/Cubits/user_cubit.dart';
-import 'package:nabad/Cubits/user_state.dart';
+import 'package:nabad/Cubits/cubits/user_cubit.dart';
+import 'package:nabad/Cubits/states/user_state.dart';
 import 'package:nabad/Models/patient_model.dart';
 import 'package:nabad/core/router/app_router.dart';
 import 'package:nabad/core/theme/nabad_colors.dart';
@@ -497,7 +497,11 @@ class _ProfileContent extends StatelessWidget {
                 _menuItem(Icons.receipt_long_outlined, 'طلباتي', () {}),
                 _menuItem(Icons.biotech_outlined, 'تحاليلي', () {}),
                 _menuItem(Icons.headset_mic_outlined, 'استشاراتي', () {}),
-                _menuItem(Icons.history_rounded, 'سجل المدفوعات', () {}),
+                _menuItem(
+                  Icons.account_balance_wallet_outlined,
+                  'محفظتي',
+                  () => Navigator.pushNamed(context, AppRoutes.wallet),
+                ),
                 _menuItem(Icons.settings_outlined, 'الإعدادات', () {}),
 
                 const SizedBox(height: 20),

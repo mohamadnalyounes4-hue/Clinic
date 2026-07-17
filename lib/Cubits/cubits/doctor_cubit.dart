@@ -1,5 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:nabad/Cubits/clinic_states.dart';
+import 'package:nabad/Cubits/states/clinic_states.dart';
 import 'package:nabad/Models/doctor_model.dart';
 import 'package:nabad/core/Api/api_consumer.dart';
 import 'package:nabad/core/Api/end_points.dart';

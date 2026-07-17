@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:nabad/screens/HomePage_patient/doctor/doctor_profile_booking_screen.dart';
+import 'package:nabad/screens/HomePage_patient/doctor/doctors_screen.dart';
 import 'package:nabad/screens/HomePage_patient/homepage_p.dart';
 import 'package:nabad/screens/HomePage_patient/patient_profile_screen.dart';
 import 'package:nabad/screens/before_home/account_type_screen.dart';
@@ -9,12 +11,10 @@ import 'package:nabad/screens/before_home/otp_code_screen.dart';
 import 'package:nabad/screens/before_home/patient_login_screen.dart';
 import 'package:nabad/screens/before_home/register_screen.dart';
 import 'package:nabad/screens/HomePage_doctor/homepage_d.dart';
-import 'package:nabad/Models/doctor_directory_model.dart';
 import 'package:nabad/Models/doctor_model.dart';
-import 'package:nabad/screens/doctors/appointments_screen.dart';
-import 'package:nabad/screens/doctors/booking_detail_screen.dart';
-import 'package:nabad/screens/doctors/doctor_profile_booking_screen.dart';
-import 'package:nabad/screens/doctors/doctors_screen.dart';
+import 'package:nabad/screens/HomePage_patient/appointments_screen.dart';
+import 'package:nabad/screens/HomePage_patient/booking_detail_screen.dart';
+import 'package:nabad/screens/HomePage_patient/wallet_screen.dart';
 
 class AppRoutes {
   static const String welcome = '/';
@@ -33,6 +33,7 @@ class AppRoutes {
   static const String appointments = '/appointments';
   static const String bookingDetail = '/booking_detail';
   static const String doctorProfileBooking = '/doctor_profile_booking';
+  static const String wallet = '/wallet';
 }
 
 class AppRouter {
@@ -66,9 +67,11 @@ class AppRouter {
         return MaterialPageRoute(builder: (_) => const DoctorsScreen());
       case AppRoutes.appointments:
         return MaterialPageRoute(builder: (_) => const AppointmentsScreen());
+      case AppRoutes.wallet:
+        return MaterialPageRoute(builder: (_) => const WalletScreen());
       case AppRoutes.bookingDetail:
         final doctor = settings.arguments;
-        if (doctor is Doctor) {
+        if (doctor is DoctorModel) {
           return MaterialPageRoute(
             builder: (_) => BookingDetailScreen(doctor: doctor),
           );

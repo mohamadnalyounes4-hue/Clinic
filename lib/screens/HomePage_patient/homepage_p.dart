@@ -1,17 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:nabad/Cubits/clinic_states.dart';
-import 'package:nabad/Cubits/department_cubit.dart';
-import 'package:nabad/Cubits/doctor_cubit.dart';
-import 'package:nabad/Cubits/user_cubit.dart';
-import 'package:nabad/Cubits/user_state.dart';
+import 'package:nabad/Cubits/states/clinic_states.dart';
+import 'package:nabad/Cubits/cubits/department_cubit.dart';
+import 'package:nabad/Cubits/cubits/doctor_cubit.dart';
+import 'package:nabad/Cubits/cubits/points_cubit.dart';
+import 'package:nabad/Cubits/states/points_state.dart';
+import 'package:nabad/Cubits/cubits/user_cubit.dart';
+import 'package:nabad/Cubits/states/user_state.dart';
 import 'package:nabad/Models/department_model.dart';
 import 'package:nabad/Models/doctor_model.dart';
 import 'package:nabad/core/theme/nabad_colors.dart';
 import 'package:nabad/screens/HomePage_patient/patient_profile_screen.dart';
-import 'package:nabad/screens/doctors/doctor_profile_booking_screen.dart';
-import 'package:nabad/screens/doctors/appointments_screen.dart';
-import 'package:nabad/screens/doctors/doctors_screen.dart';
+import 'package:nabad/screens/HomePage_patient/doctor/doctor_profile_booking_screen.dart';
+import 'package:nabad/screens/HomePage_patient/appointments_screen.dart';
+import 'package:nabad/screens/HomePage_patient/doctor/doctors_screen.dart';
 import 'package:nabad/widgets/soft_ring.dart';
 
 class PatientHomePage extends StatefulWidget {
@@ -49,6 +52,7 @@ class _PatientHomePageState extends State<PatientHomePage> {
     context.read<UserCubit>().getPatientProfile();
     context.read<DepartmentCubit>().getDepartments();
     context.read<DoctorCubit>().getAllDoctors();
+    context.read<PointsCubit>().getPointsSummary();
   }
 
   @override
@@ -94,13 +98,12 @@ class _PatientHomePageState extends State<PatientHomePage> {
   void _onDeptTap(DepartmentModel dept) {
     context.read<DoctorCubit>().getDoctorsByDepartment(dept.id);
     Future.delayed(const Duration(milliseconds: 400), () {
-      if (_scrollController.hasClients) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 600),
-          curve: Curves.easeOut,
-        );
-      }
+      if (!mounted || !_scrollController.hasClients) return;
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 600),
+        curve: Curves.easeOut,
+      );
     });
   }
 
@@ -127,6 +130,8 @@ class _PatientHomePageState extends State<PatientHomePage> {
         _PatientHeader(),
         const SizedBox(height: 18),
         const _SearchBox(),
+        const SizedBox(height: 16),
+        const _PointsBalanceCard(),
         const SizedBox(height: 20),
         _TipsCarousel(tips: _tips),
         const SizedBox(height: 22),
@@ -167,9 +172,6 @@ class _PatientHomePageState extends State<PatientHomePage> {
           builder: (context, state) {
             if (state is DoctorInitial) {
               // لو ما اشتغل الـ fetch لسبب ما، نطلقه هون
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                context.read<DoctorCubit>().getAllDoctors();
-              });
               return const SizedBox(
                 height: 120,
                 child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
@@ -232,6 +234,7 @@ class _PatientHomePageState extends State<PatientHomePage> {
       onPopInvokedWithResult: (didPop, result) {
         // منع الرجوع للـ welcome — الضغط على باك بيطلع من التطبيق
         if (!didPop) {
+          SystemNavigator.pop();
           // لا نفعل شيء، أو يمكن إظهار dialog "هل تريد الخروج؟"
         }
       },
@@ -273,9 +276,6 @@ class _PatientHomePageState extends State<PatientHomePage> {
               if (index == 0) {
                 context.read<DoctorCubit>().getAllDoctors();
               }
-              if (index == 1) {
-                context.read<DoctorCubit>().getAllDoctors();
-              }
               if (index == 3) {
                 context.read<UserCubit>().getPatientProfile();
               }
@@ -295,8 +295,8 @@ class _PatientHeader extends StatelessWidget {
     return BlocBuilder<UserCubit, UserState>(
       builder: (context, state) {
         final String greeting = state is PatientProfileSuccess
-            ? 'أهلاً، ${state.patient.user.firstName} نتمنى لك يوماً صحياً 🤗'
-            : ' نتمنى لك يوماً صحياً ';
+            ? 'أهلاً، ${state.patient.user.firstName}'
+            : ' نتمنى لك يوماً صحياً 🤗';
 
         return Row(
           children: [
@@ -314,12 +314,18 @@ class _PatientHeader extends StatelessWidget {
               ),
             ),
             const Spacer(),
-            Text(
-              greeting,
-              style: const TextStyle(
-                color: NabadColors.primary,
-                fontSize: 20,
-                fontWeight: FontWeight.w900,
+            Expanded(
+              flex: 3,
+              child: Text(
+                greeting,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: NabadColors.primary,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                ),
               ),
             ),
             const Spacer(),
@@ -336,6 +342,85 @@ class _PatientHeader extends StatelessWidget {
               icon: const Icon(Icons.notifications_none_rounded),
             ),
           ],
+        );
+      },
+    );
+  }
+}
+
+class _PointsBalanceCard extends StatelessWidget {
+  const _PointsBalanceCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<PointsCubit, PointsState>(
+      builder: (context, state) {
+        // نظام النقاط مش نشط أو لسه بيحمّل أو حصل خطأ → منخفيش الهوم بسببه
+        if (state is! PointsSuccess || !state.summary.loyaltyActive) {
+          return const SizedBox.shrink();
+        }
+
+        final summary = state.summary;
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: NabadColors.primary,
+            borderRadius: BorderRadius.circular(22),
+            boxShadow: [
+              BoxShadow(
+                color: NabadColors.primary.withAlpha(40),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: Colors.white.withAlpha(35),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Icon(
+                  Icons.stars_rounded,
+                  color: Colors.white,
+                  size: 26,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${summary.pointsBalance} نقطة',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'استخدمها كخصم بحجزك القادم',
+                      style: TextStyle(
+                        color: Colors.white.withAlpha(215),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.arrow_back_ios_new_rounded,
+                color: Colors.white.withAlpha(180),
+                size: 16,
+              ),
+            ],
+          ),
         );
       },
     );
