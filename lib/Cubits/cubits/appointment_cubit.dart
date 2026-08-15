@@ -1,6 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:nabad/Cubits/states/appointment_state.dart';
 import 'package:nabad/Models/appointment_model.dart';
+import 'package:nabad/Models/doctor_schedule_model.dart';
 import 'package:nabad/core/Api/api_consumer.dart';
 import 'package:nabad/core/Api/end_points.dart';
 import 'package:nabad/core/Error/exceptions.dart';
@@ -9,6 +10,23 @@ class AppointmentCubit extends Cubit<AppointmentState> {
   final ApiConsumer api;
 
   AppointmentCubit({required this.api}) : super(AppointmentInitial());
+
+  Future<List<DoctorScheduleModel>> getDoctorSchedule(int doctorId) async {
+    try {
+      final response = await api.get(EndPoints.doctorSchedule(doctorId));
+      final rawSchedule = response is Map<String, dynamic>
+          ? response['schedule']
+          : null;
+      if (rawSchedule is! List) return [];
+
+      return rawSchedule
+          .whereType<Map<String, dynamic>>()
+          .map(DoctorScheduleModel.fromJson)
+          .toList();
+    } on ServerExceptions {
+      rethrow;
+    }
+  }
 
   Future<void> getAppointments() async {
     emit(AppointmentLoading());

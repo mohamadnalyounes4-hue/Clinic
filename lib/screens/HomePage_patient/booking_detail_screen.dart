@@ -6,6 +6,7 @@ import 'package:nabad/Cubits/cubits/wallet_cubit.dart';
 import '../../Cubits/states/points_state.dart';
 import '../../Cubits/states/wallet_state.dart';
 import '../../Models/doctor_model.dart';
+import '../../Models/doctor_schedule_model.dart';
 import '../../Models/points_model.dart';
 import '../../core/Error/exceptions.dart';
 import '../../core/theme/nabd_colors.dart';
@@ -22,9 +23,12 @@ class BookingDetailScreen extends StatefulWidget {
 class _BookingDetailScreenState extends State<BookingDetailScreen> {
   // ── الحالة ──
   int _selectedDayIndex = 0; // اليوم الحالي افتراضياً
-  String _selectedTime = '09:00';
+  String _selectedTime = '';
   bool _isMorning = true;
   bool _isBooking = false;
+  bool _isScheduleLoading = true;
+  String? _scheduleError;
+  List<DoctorScheduleModel> _doctorSchedule = const [];
 
   // ── النقاط المستخدمة كخصم ──
   int _pointsToRedeem = 0;
@@ -34,7 +38,30 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
     super.initState();
     context.read<PointsCubit>().getPointsSummary();
     context.read<WalletCubit>().loadWallet();
-    _syncTimeSelection();
+    _loadDoctorSchedule();
+  }
+
+  Future<void> _loadDoctorSchedule() async {
+    try {
+      final schedule = await context.read<AppointmentCubit>().getDoctorSchedule(
+        widget.doctor.id,
+      );
+      if (!mounted) return;
+      setState(() {
+        _doctorSchedule = schedule;
+        _scheduleError = null;
+        _isScheduleLoading = false;
+        _syncTimeSelection();
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _doctorSchedule = const [];
+        _scheduleError = 'تعذر جلب فترات دوام الطبيب';
+        _isScheduleLoading = false;
+        _selectedTime = '';
+      });
+    }
   }
 
   bool _isTimeInPast(DateTime day, String time) {
@@ -50,7 +77,10 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
     return slotDateTime.isBefore(now.add(const Duration(minutes: 5)));
   }
 
-  bool get _isSelectedTimeInPast => _isTimeInPast(_selectedDate, _selectedTime);
+  bool get _hasSelectedTime => _selectedTime.isNotEmpty;
+
+  bool get _isSelectedTimeInPast =>
+      _hasSelectedTime && _isTimeInPast(_selectedDate, _selectedTime);
 
   void _syncTimeSelection() {
     final morningAvailable = _morningSlots.any(
@@ -70,9 +100,11 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
         .map((s) => s['time'] as String)
         .where((t) => !_isTimeInPast(_selectedDate, t))
         .toList();
-    if (availableTimes.isNotEmpty && !availableTimes.contains(_selectedTime)) {
-      _selectedTime = availableTimes.first;
-    }
+    _selectedTime = availableTimes.contains(_selectedTime)
+        ? _selectedTime
+        : availableTimes.isEmpty
+        ? ''
+        : availableTimes.first;
   }
 
   // ── بيانات الأيام ──
@@ -103,36 +135,87 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
 
   String _monthName(int month) {
     const names = {
-      1: 'يناير', 2: 'فبراير', 3: 'مارس', 4: 'أبريل',
-      5: 'مايو', 6: 'يونيو', 7: 'يوليو', 8: 'أغسطس',
-      9: 'سبتمبر', 10: 'أكتوبر', 11: 'نوفمبر', 12: 'ديسمبر',
+      1: 'يناير',
+      2: 'فبراير',
+      3: 'مارس',
+      4: 'أبريل',
+      5: 'مايو',
+      6: 'يونيو',
+      7: 'يوليو',
+      8: 'أغسطس',
+      9: 'سبتمبر',
+      10: 'أكتوبر',
+      11: 'نوفمبر',
+      12: 'ديسمبر',
     };
     return names[month] ?? '';
   }
 
-  // ── أوقات الصباح ──
-  // ⚠️ مفيش endpoint يرجع الـ slots المحجوزة فعليًا للمريض، فبنعرض شبكة
-  // أوقات ثابتة كل نص ساعة ونفلترها حسب دوام الطبيب بس (مش حسب حجوزات
-  // فعلية). الباك هو اللي هيرفض أي تعارض وقت حقيقي عند التأكيد.
-  final List<Map<String, dynamic>> _morningSlots = [
-    {'time': '09:00', 'label': 'صباحاً'},
-    {'time': '09:30', 'label': 'صباحاً'},
-    {'time': '10:00', 'label': 'صباحاً'},
-    {'time': '10:30', 'label': 'صباحاً'},
-    {'time': '11:00', 'label': 'صباحاً'},
-    {'time': '11:30', 'label': 'صباحاً'},
-  ];
+  String _englishWeekday(int weekday) {
+    const names = {
+      1: 'Monday',
+      2: 'Tuesday',
+      3: 'Wednesday',
+      4: 'Thursday',
+      5: 'Friday',
+      6: 'Saturday',
+      7: 'Sunday',
+    };
+    return names[weekday] ?? '';
+  }
 
-  // ── أوقات المساء ──
-  // بصيغة 24 ساعة عشان تتبعت زي ما هي للباك (appointment_time بصيغة HH:mm).
-  final List<Map<String, dynamic>> _eveningSlots = [
-    {'time': '16:00', 'label': 'مساءً'},
-    {'time': '16:30', 'label': 'مساءً'},
-    {'time': '17:00', 'label': 'مساءً'},
-    {'time': '17:30', 'label': 'مساءً'},
-    {'time': '18:00', 'label': 'مساءً'},
-    {'time': '18:30', 'label': 'مساءً'},
-  ];
+  int? _timeToMinutes(String value) {
+    final parts = value.split(':');
+    if (parts.length < 2) return null;
+    final hour = int.tryParse(parts[0]);
+    final minute = int.tryParse(parts[1]);
+    if (hour == null || minute == null) return null;
+    return hour * 60 + minute;
+  }
+
+  String _minutesToTime(int value) {
+    final hour = (value ~/ 60).toString().padLeft(2, '0');
+    final minute = (value % 60).toString().padLeft(2, '0');
+    return '$hour:$minute';
+  }
+
+  List<Map<String, dynamic>> get _daySlots {
+    final duration = widget.doctor.consultationDuration;
+    if (duration == null || duration <= 0) return const [];
+
+    final selectedWeekday = _englishWeekday(_selectedDate.weekday);
+    final times = <String>{};
+
+    for (final schedule in _doctorSchedule.where(
+      (item) => item.day.toLowerCase() == selectedWeekday.toLowerCase(),
+    )) {
+      final start = _timeToMinutes(schedule.startTime);
+      final end = _timeToMinutes(schedule.endTime);
+      if (start == null || end == null || end <= start) continue;
+
+      for (var time = start; time + duration <= end; time += duration) {
+        times.add(_minutesToTime(time));
+      }
+    }
+
+    final sortedTimes = times.toList()..sort();
+    return sortedTimes
+        .map(
+          (time) => <String, dynamic>{
+            'time': time,
+            'label': (_timeToMinutes(time) ?? 0) < 12 * 60 ? 'صباحاً' : 'مساءً',
+          },
+        )
+        .toList();
+  }
+
+  List<Map<String, dynamic>> get _morningSlots => _daySlots
+      .where((slot) => (_timeToMinutes(slot['time'] as String) ?? 0) < 12 * 60)
+      .toList();
+
+  List<Map<String, dynamic>> get _eveningSlots => _daySlots
+      .where((slot) => (_timeToMinutes(slot['time'] as String) ?? 0) >= 12 * 60)
+      .toList();
 
   List<Map<String, dynamic>> get _currentSlots =>
       _isMorning ? _morningSlots : _eveningSlots;
@@ -270,9 +353,9 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                         onPressed: _pointsToRedeem >= maxUsable
                             ? null
                             : () => setState(() {
-                                _pointsToRedeem = (_pointsToRedeem +
-                                        summary.pointsPerUnit)
-                                    .clamp(0, maxUsable);
+                                _pointsToRedeem =
+                                    (_pointsToRedeem + summary.pointsPerUnit)
+                                        .clamp(0, maxUsable);
                               }),
                         icon: const Icon(Icons.add_circle_outline_rounded),
                         color: NabadColors.primary,
@@ -294,13 +377,11 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                         onPressed: _pointsToRedeem <= 0
                             ? null
                             : () => setState(() {
-                                _pointsToRedeem = (_pointsToRedeem -
-                                        summary.pointsPerUnit)
-                                    .clamp(0, maxUsable);
+                                _pointsToRedeem =
+                                    (_pointsToRedeem - summary.pointsPerUnit)
+                                        .clamp(0, maxUsable);
                               }),
-                        icon: const Icon(
-                          Icons.remove_circle_outline_rounded,
-                        ),
+                        icon: const Icon(Icons.remove_circle_outline_rounded),
                         color: NabadColors.mutedText,
                         visualDensity: VisualDensity.compact,
                       ),
@@ -591,61 +672,72 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
         const SizedBox(height: 16),
 
         // أيام الأسبوع
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: List.generate(_days.length, (index) {
-            // عكس الترتيب لـ RTL
-            final i = _days.length - 1 - index;
-            final isSelected = _selectedDayIndex == i;
-            return GestureDetector(
-              onTap: () => setState(() {
-                _selectedDayIndex = i;
-                _syncTimeSelection();
-              }),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                width: 60,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                decoration: BoxDecoration(
-                  color: isSelected ? NabadColors.primary : NabadColors.white,
-                  borderRadius: BorderRadius.circular(50),
-                  boxShadow: isSelected
-                      ? []
-                      : [
-                          BoxShadow(
-                            color: NabadColors.primary.withOpacity(0.06),
-                            blurRadius: 8,
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final responsiveWidth = constraints.maxWidth / _days.length;
+            final dayCardWidth = responsiveWidth > 60 ? 60.0 : responsiveWidth;
+
+            return Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: List.generate(_days.length, (index) {
+                // عكس الترتيب لـ RTL
+                final i = _days.length - 1 - index;
+                final isSelected = _selectedDayIndex == i;
+                return GestureDetector(
+                  onTap: () => setState(() {
+                    _selectedDayIndex = i;
+                    _syncTimeSelection();
+                  }),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    width: dayCardWidth,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? NabadColors.primary
+                          : NabadColors.white,
+                      borderRadius: BorderRadius.circular(50),
+                      boxShadow: isSelected
+                          ? []
+                          : [
+                              BoxShadow(
+                                color: NabadColors.primary.withOpacity(0.06),
+                                blurRadius: 8,
+                              ),
+                            ],
+                    ),
+                    child: Column(
+                      children: [
+                        Text(
+                          _days[i]['name'] as String,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: isSelected
+                                ? NabadColors.white
+                                : NabadColors.mutedText,
                           ),
-                        ],
-                ),
-                child: Column(
-                  children: [
-                    Text(
-                      _days[i]['name'] as String,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: isSelected
-                            ? NabadColors.white
-                            : NabadColors.mutedText,
-                      ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          _days[i]['num'] as String,
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: isSelected
+                                ? NabadColors.white
+                                : NabadColors.darkText,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 6),
-                    Text(
-                      _days[i]['num'] as String,
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                        color: isSelected
-                            ? NabadColors.white
-                            : NabadColors.darkText,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+                  ),
+                );
+              }),
             );
-          }),
+          },
         ),
       ],
     );
@@ -687,76 +779,107 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
         ),
         const SizedBox(height: 16),
 
-        // شبكة الأوقات
-        GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 3,
-            mainAxisSpacing: 10,
-            crossAxisSpacing: 10,
-            childAspectRatio: 2.2,
-          ),
-          itemCount: _currentSlots.length,
-          itemBuilder: (context, index) {
-            final slot = _currentSlots[index];
-            final time = slot['time'] as String;
-            final label = slot['label'] as String;
-            final isPast = _isTimeInPast(_selectedDate, time);
-            final isSelected = _selectedTime == time && !isPast;
+        // شبكة الأوقات الحقيقية فقط
+        if (_isScheduleLoading)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 22),
+            child: Center(
+              child: SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            ),
+          )
+        else if (_currentSlots.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 22),
+            decoration: BoxDecoration(
+              color: NabadColors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: NabadColors.divider),
+            ),
+            child: Text(
+              _scheduleError ?? 'لا توجد فترات متاحة لهذا اليوم',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: NabadColors.mutedText,
+              ),
+            ),
+          )
+        else
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,
+              mainAxisSpacing: 10,
+              crossAxisSpacing: 10,
+              childAspectRatio: 2.2,
+            ),
+            itemCount: _currentSlots.length,
+            itemBuilder: (context, index) {
+              final slot = _currentSlots[index];
+              final time = slot['time'] as String;
+              final label = slot['label'] as String;
+              final isPast = _isTimeInPast(_selectedDate, time);
+              final isSelected = _selectedTime == time && !isPast;
 
-            return GestureDetector(
-              onTap: isPast
-                  ? null
-                  : () => setState(() => _selectedTime = time),
-              child: Opacity(
-                opacity: isPast ? 0.4 : 1,
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 180),
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? NabadColors.softTeal
-                        : NabadColors.white,
-                    borderRadius: BorderRadius.circular(50),
-                    border: Border.all(
+              return GestureDetector(
+                onTap: isPast
+                    ? null
+                    : () => setState(() => _selectedTime = time),
+                child: Opacity(
+                  opacity: isPast ? 0.4 : 1,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    decoration: BoxDecoration(
                       color: isSelected
-                          ? NabadColors.primary
-                          : NabadColors.divider,
-                      width: isSelected ? 1.5 : 1,
+                          ? NabadColors.softTeal
+                          : NabadColors.white,
+                      borderRadius: BorderRadius.circular(50),
+                      border: Border.all(
+                        color: isSelected
+                            ? NabadColors.primary
+                            : NabadColors.divider,
+                        width: isSelected ? 1.5 : 1,
+                      ),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          time,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: isPast
+                                ? NabadColors.mutedText
+                                : isSelected
+                                ? NabadColors.primary
+                                : NabadColors.darkText,
+                            decoration: isPast
+                                ? TextDecoration.lineThrough
+                                : null,
+                          ),
+                        ),
+                        Text(
+                          isPast ? 'فات الوقت' : label,
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: NabadColors.mutedText,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        time,
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: isPast
-                              ? NabadColors.mutedText
-                              : isSelected
-                              ? NabadColors.primary
-                              : NabadColors.darkText,
-                          decoration: isPast
-                              ? TextDecoration.lineThrough
-                              : null,
-                        ),
-                      ),
-                      Text(
-                        isPast ? 'فات الوقت' : label,
-                        style: const TextStyle(
-                          fontSize: 10,
-                          color: NabadColors.mutedText,
-                        ),
-                      ),
-                    ],
-                  ),
                 ),
-              ),
-            );
-          },
-        ),
+              );
+            },
+          ),
       ],
     );
   }
@@ -770,10 +893,11 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
             .map((s) => s['time'] as String)
             .where((t) => !_isTimeInPast(_selectedDate, t))
             .toList();
-        if (availableTimes.isNotEmpty &&
-            !availableTimes.contains(_selectedTime)) {
-          _selectedTime = availableTimes.first;
-        }
+        _selectedTime = availableTimes.contains(_selectedTime)
+            ? _selectedTime
+            : availableTimes.isEmpty
+            ? ''
+            : availableTimes.first;
       }),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
@@ -847,8 +971,9 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
   Widget _buildConfirmBar() {
     final period = _isMorning ? 'ص' : 'م';
     final monthLabel = _monthName(_selectedDate.month);
-    final dayLabel =
-        '$_selectedDayName $_selectedDayNum $monthLabel، $_selectedTime $period';
+    final dayLabel = _hasSelectedTime
+        ? '$_selectedDayName $_selectedDayNum $monthLabel، $_selectedTime $period'
+        : '$_selectedDayName $_selectedDayNum $monthLabel — لم يتم اختيار وقت';
 
     return BlocBuilder<WalletCubit, WalletState>(
       builder: (context, walletState) {
@@ -980,6 +1105,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                 child: ElevatedButton.icon(
                   onPressed:
                       (_isBooking ||
+                          !_hasSelectedTime ||
                           _isSelectedTimeInPast ||
                           insufficientBalance)
                       ? null
@@ -997,6 +1123,8 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                   label: Text(
                     _isBooking
                         ? 'جاري الحجز...'
+                        : !_hasSelectedTime
+                        ? 'لا توجد فترات متاحة'
                         : _isSelectedTimeInPast
                         ? 'اختر وقتاً لم يفت بعد'
                         : insufficientBalance
@@ -1026,7 +1154,9 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
   }
 
   Future<void> _confirmBooking() async {
-    if (_isSelectedTimeInPast || _hasInsufficientBalance) return;
+    if (!_hasSelectedTime || _isSelectedTimeInPast || _hasInsufficientBalance) {
+      return;
+    }
     setState(() => _isBooking = true);
     try {
       await context.read<AppointmentCubit>().bookAppointment(

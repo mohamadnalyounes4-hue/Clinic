@@ -26,6 +26,7 @@ class EndPoints {
   static String doctorsByDepartment(id) => "doctor_department/$id";
   static String doctorById(id) => "doctor/$id";
   static String deleteDoctor(id) => "delete_doctor/$id";
+  static String doctorSchedule(id) => "doctor_schedule/$id";
 
   // Appointments
   static String appointments = "appointments"; // GET (list) / POST (book)
