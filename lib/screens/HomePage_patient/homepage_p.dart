@@ -135,10 +135,6 @@ class _PatientHomePageState extends State<PatientHomePage> {
         const SizedBox(height: 20),
         _TipsCarousel(tips: _tips),
         const SizedBox(height: 22),
-        const _SectionHeader(title: 'المواعيد القادمة', action: 'الكل'),
-        const SizedBox(height: 10),
-        const _UpcomingAppointmentCard(),
-        const SizedBox(height: 22),
         const _SectionHeader(title: 'التخصصات الطبية'),
         const SizedBox(height: 12),
         BlocBuilder<DepartmentCubit, DepartmentState>(
@@ -873,6 +869,8 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
+// Kept as a standalone design component, but intentionally hidden from home.
+// ignore: unused_element
 class _UpcomingAppointmentCard extends StatelessWidget {
   const _UpcomingAppointmentCard();
 

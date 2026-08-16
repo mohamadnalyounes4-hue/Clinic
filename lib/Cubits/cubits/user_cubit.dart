@@ -51,7 +51,7 @@ class UserCubit extends Cubit<UserState> {
         emit(LoginSuccessPatient());
       }
     } on ServerExceptions catch (e) {
-      emit(LoginError(message: e.errModel.errorMessage));
+      emit(LoginError(message: e.errModel.errorMessage, statusCode: e.statusCode));
     }
   }
 
@@ -82,7 +82,7 @@ class UserCubit extends Cubit<UserState> {
     required String gender,
     required String address,
     required String birthDate,
-    required String bloodType,
+    String? bloodType,
   }) async {
     emit(CompleteProfileLoading());
     try {

@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:nabad/Cubits/cubits/user_cubit.dart';
 import 'package:nabad/Cubits/states/user_state.dart';
+import 'package:nabad/core/Api/end_points.dart';
+import 'package:nabad/core/Cache/cache_helper.dart';
 import 'package:nabad/core/router/app_router.dart';
 import 'package:nabad/core/theme/nabad_colors.dart';
 import 'package:nabad/screens/HomePage_patient/homepage_p.dart';
+import 'package:nabad/screens/before_home/health_information_screen.dart';
 import 'package:nabad/widgets/patient_login/country_code.dart';
 import 'package:nabad/widgets/patient_login/create_account_prompt.dart';
 import 'package:nabad/widgets/patient_login/patient_login_card.dart';
@@ -53,7 +56,8 @@ class _PatientLoginScreenState extends State<PatientLoginScreen> {
   String? _validatePassword(String? value) {
     final String password = value ?? '';
     if (password.isEmpty) return 'أدخل كلمة المرور';
-    if (password.length < 6) return 'كلمة المرور يجب أن تكون 6 أحرف على الأقل';
+    // الباك إند يطلب 8 أحرف على الأقل لكلمة المرور (نفس شرط شاشة التسجيل).
+    if (password.length < 8) return 'كلمة المرور يجب أن تكون 8 أحرف على الأقل';
     return null;
   }
 
@@ -62,10 +66,9 @@ class _PatientLoginScreenState extends State<PatientLoginScreen> {
     return BlocListener<UserCubit, UserState>(
       listener: (context, state) {
         if (state is LoginSuccessPatient) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => const PatientHomePage()),
-          );
+          // قبل ما نفتح الهوم، نتأكد إن ملف المريض مكتمل (gender/birth_date/
+          // address)، زي ما التوثيق بيطلب، بدل ما نسمح له يوصل للحجز بملف ناقص.
+          context.read<UserCubit>().getPatientProfile();
         }
         if (state is LoginSuccessDoctor) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -77,14 +80,54 @@ class _PatientLoginScreenState extends State<PatientLoginScreen> {
               behavior: SnackBarBehavior.floating,
             ),
           );
-        } else if (state is LoginError) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.message),
-              backgroundColor: Colors.red.shade700,
-              behavior: SnackBarBehavior.floating,
+        } else if (state is PatientProfileSuccess) {
+          final patient = state.patient;
+          final bool isIncomplete = patient.gender == null ||
+              patient.birthDate == null ||
+              patient.address == null;
+
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (_) => isIncomplete
+                  ? const HealthInformationScreen()
+                  : const PatientHomePage(),
             ),
           );
+        } else if (state is PatientProfileError) {
+          // ما قدرناش نتأكد من اكتمال الملف (مثلاً مشكلة شبكة)؛ ما لازم نحبس
+          // المستخدم هون، منسمحله يدخل عالهوم عادي.
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const PatientHomePage()),
+          );
+        } else if (state is LoginError) {
+          if (state.statusCode == 403) {
+            // البريد غير مؤكد -> حوّله لشاشة OTP مع البريد المحفوظ من التسجيل.
+            final String? savedEmail = CacheHelper.getDataString(
+              key: ApiKey.email,
+            );
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(state.message),
+                backgroundColor: Colors.orange.shade700,
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+            Navigator.pushNamed(
+              context,
+              AppRoutes.otpCode,
+              arguments: savedEmail,
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(state.message),
+                backgroundColor: Colors.red.shade700,
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
         }
       },
       child: Directionality(

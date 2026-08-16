@@ -3,8 +3,11 @@ import 'package:nabad/core/Error/error_model.dart';
 
 class ServerExceptions implements Exception {
   final ErrorModel errModel;
+  // كود حالة HTTP (401/403/422...) عشان الشاشات تقدر تتصرف حسب الحالة
+  // بدل ما تعتمد بس على نص الرسالة (مثال: تحويل 403 لشاشة OTP).
+  final int? statusCode;
 
-  ServerExceptions({required this.errModel});
+  ServerExceptions({required this.errModel, this.statusCode});
 }
 
 String _extractErrorMessage(dynamic data) {
@@ -55,6 +58,7 @@ void handleDioException(DioException e) {
 
     throw ServerExceptions(
       errModel: ErrorModel(errorMessage: errorMessage),
+      statusCode: null,
     );
   }
 
@@ -98,5 +102,6 @@ void handleDioException(DioException e) {
 
   throw ServerExceptions(
     errModel: ErrorModel(errorMessage: errorMessage),
+    statusCode: statusCode,
   );
 }

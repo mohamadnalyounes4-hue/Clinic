@@ -62,7 +62,21 @@ class _OtpCodeScreenState extends State<OtpCodeScreen> {
     return BlocListener<UserCubit, UserState>(
       listener: (context, state) {
         if (state is VerifyOtpSuccess) {
-          Navigator.pushReplacementNamed(context, AppRoutes.healthInformation);
+          // مهم: التسجيل لا يفتح جلسة (لا يوجد Token بعد إنشاء الحساب مباشرة).
+          // لازم يسجّل دخول أولاً عشان ياخد Token، وبعدها شاشة استكمال الملف
+          // (اللي محمية بـ Authorization) رح تشتغل صح. التوجيه المباشر
+          // لـ complete_profile هون كان بيسبب 401 لأنو ما في Token أصلاً.
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('تم تأكيد بريدك، سجّل دخولك للمتابعة'),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+          Navigator.pushNamedAndRemoveUntil(
+            context,
+            AppRoutes.patientLogin,
+            (route) => false,
+          );
         } else if (state is VerifyOtpError) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(

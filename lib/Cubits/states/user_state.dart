@@ -18,7 +18,8 @@ class LoginSuccessPatient extends UserState {}
 class LoginSuccessDoctor extends UserState {}
 class LoginError extends UserState {
   final String message;
-  LoginError({required this.message});
+  final int? statusCode;
+  LoginError({required this.message, this.statusCode});
 }
 
 // Verify OTP

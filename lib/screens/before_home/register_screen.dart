@@ -50,8 +50,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
         );
   }
 
-  String? _requiredValidator(String? value, String label) {
-    if ((value ?? '').trim().isEmpty) return '$label مطلوب';
+
+  // الباك إند يرفض أكثر من 20 محرف لـ first_name/last_name (422)،
+  // فلازم نتحقق محليًا قبل الإرسال بدل ما ننتظر رد السيرفر.
+  String? _nameValidator(String? value, String label) {
+    final String name = (value ?? '').trim();
+    if (name.isEmpty) return '$label مطلوب';
+    if (name.length > 20) return '$label يجب ألا يتجاوز 20 محرفاً';
     return null;
   }
 
@@ -172,8 +177,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                     onToggleConfirmPassword: () {
                                       setState(() => _obscureConfirmPassword = !_obscureConfirmPassword);
                                     },
-                                    validateFirstName: (value) => _requiredValidator(value, 'الاسم الأول'),
-                                    validateLastName: (value) => _requiredValidator(value, 'الاسم الأخير'),
+                                    validateFirstName: (value) => _nameValidator(value, 'الاسم الأول'),
+                                    validateLastName: (value) => _nameValidator(value, 'الاسم الأخير'),
                                     validateEmail: _emailValidator,
                                     validatePhone: _phoneValidator,
                                     validatePassword: _passwordValidator,

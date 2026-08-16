@@ -81,22 +81,23 @@ class UserRepository {
   }
 
   // Complete Profile
+  // blood_type اختياري حسب التوثيق، فمش لازم نجبر المستخدم يختاره.
   Future<void> completeProfile({
     required String gender,
     required String address,
     required String birthDate,
-    required String bloodType,
+    String? bloodType,
   }) async {
     try {
-      await api.post(
-        EndPoints.completeProfile,
-        data: {
-          ApiKey.gender: gender,
-          ApiKey.address: address,
-          ApiKey.birthDate: birthDate,
-          ApiKey.bloodType: bloodType,
-        },
-      );
+      final Map<String, dynamic> data = {
+        ApiKey.gender: gender,
+        ApiKey.address: address,
+        ApiKey.birthDate: birthDate,
+      };
+      if (bloodType != null && bloodType.isNotEmpty) {
+        data[ApiKey.bloodType] = bloodType;
+      }
+      await api.post(EndPoints.completeProfile, data: data);
     } on ServerExceptions {
       rethrow;
     }

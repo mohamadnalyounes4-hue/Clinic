@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:nabad/Cubits/cubits/appointment_cubit.dart';
 import 'package:nabad/Cubits/cubits/user_cubit.dart';
+import 'package:nabad/Cubits/states/appointment_state.dart';
 import 'package:nabad/Cubits/states/user_state.dart';
+import 'package:nabad/Models/appointment_model.dart';
 import 'package:nabad/Models/patient_model.dart';
 import 'package:nabad/core/router/app_router.dart';
 import 'package:nabad/core/theme/nabad_colors.dart';
@@ -22,6 +25,7 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
       if (state is! PatientProfileSuccess && state is! PatientProfileLoading) {
         context.read<UserCubit>().getPatientProfile();
       }
+      context.read<AppointmentCubit>().getAppointments();
     });
   }
 
@@ -127,6 +131,16 @@ class _ProfileContent extends StatelessWidget {
     } catch (_) {
       return d;
     }
+  }
+
+  String _appointmentReminder(AppointmentModel appointment) {
+    final doctor = appointment.doctorName.isEmpty
+        ? 'الطبيب'
+        : 'د. ${appointment.doctorName}';
+    final specialty = appointment.specialty.isEmpty
+        ? ''
+        : '${appointment.specialty}\n';
+    return '$doctor\n$specialty${_formatDate(appointment.date)} • ${appointment.time}';
   }
 
   @override
@@ -380,13 +394,26 @@ class _ProfileContent extends StatelessWidget {
                 Row(
                   children: [
                     Expanded(
-                      child: _ActionCard(
-                        icon: Icons.calendar_today_outlined,
-                        label: 'موعدي',
-                        sub: 'القادم',
-                        btnText: 'إعادة جدولة',
-                        btnColor: NabadColors.primary,
-                        onTap: () {},
+                      child: BlocBuilder<AppointmentCubit, AppointmentState>(
+                        builder: (context, appointmentState) {
+                          final appointment = context
+                              .read<AppointmentCubit>()
+                              .nextUpcoming;
+                          final reminder =
+                              appointmentState is AppointmentLoading
+                              ? 'جاري تحميل الموعد...'
+                              : appointmentState is AppointmentError
+                              ? 'تعذر تحميل الموعد'
+                              : appointment == null
+                              ? 'لا يوجد موعد قادم'
+                              : _appointmentReminder(appointment);
+
+                          return _ActionCard(
+                            icon: Icons.calendar_today_outlined,
+                            label: 'موعدي القادم',
+                            sub: reminder,
+                          );
+                        },
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -670,17 +697,17 @@ class _ActionCard extends StatelessWidget {
   final IconData icon;
   final String label;
   final String sub;
-  final String btnText;
-  final Color btnColor;
-  final VoidCallback onTap;
+  final String? btnText;
+  final Color? btnColor;
+  final VoidCallback? onTap;
 
   const _ActionCard({
     required this.icon,
     required this.label,
     required this.sub,
-    required this.btnText,
-    required this.btnColor,
-    required this.onTap,
+    this.btnText,
+    this.btnColor,
+    this.onTap,
   });
 
   @override
@@ -714,35 +741,39 @@ class _ActionCard extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             sub,
+            maxLines: 4,
+            overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               fontSize: 11,
               color: NabadColors.mutedText,
               fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 10),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: onTap,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: btnColor,
-                padding: const EdgeInsets.symmetric(vertical: 7),
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
+          if (btnText != null && onTap != null) ...[
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: onTap,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: btnColor ?? NabadColors.primary,
+                  padding: const EdgeInsets.symmetric(vertical: 7),
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
                 ),
-              ),
-              child: Text(
-                btnText,
-                style: const TextStyle(
-                  fontSize: 11,
-                  color: Colors.white,
-                  fontWeight: FontWeight.w900,
+                child: Text(
+                  btnText!,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
               ),
             ),
-          ),
+          ],
         ],
       ),
     );

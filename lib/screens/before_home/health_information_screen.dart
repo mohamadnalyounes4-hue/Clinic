@@ -56,28 +56,21 @@ class _HealthInformationScreenState extends State<HealthInformationScreen> {
   void _continue() {
     if (!_formKey.currentState!.validate()) return;
 
+    // gender/birth_date/address فقط مطلوبين فعليًا حسب الـ backend.
     if (_gender == null) {
       _showSnackBar('حدد الجنس');
       return;
     }
-    if (_bloodType == null) {
-      _showSnackBar('حدد زمرة الدم');
-      return;
-    }
-    if (_hasChronicDisease == null) {
-      _showSnackBar('حدد هل لديك مرض مزمن');
-      return;
-    }
-    if (_hasAllergy == null) {
-      _showSnackBar('حدد هل لديك حساسية');
-      return;
-    }
 
+    // blood_type اختياري بالباك إند، فما منمنع المتابعة لو ما اختاره.
+    // chronic disease/allergy مش مربوطين بأي endpoint حاليًا (لا يوجد حقل
+    // لهم بـ complete_profile)، فبنسيبهم اختياريين بالواجهة لحد ما ينضاف
+    // دعمهم بالباك إند، وما منحبس المستخدم بسببهم.
     context.read<UserCubit>().completeProfile(
           gender: _gender!,
           address: _addressController.text.trim(),
           birthDate: _birthDateController.text,
-          bloodType: _bloodType!,
+          bloodType: _bloodType,
         );
   }
 
