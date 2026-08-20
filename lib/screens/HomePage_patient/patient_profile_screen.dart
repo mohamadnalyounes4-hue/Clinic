@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:nabad/Cubits/cubits/appointment_cubit.dart';
+import 'package:nabad/Cubits/cubits/patient_medical_record_cubit.dart';
 import 'package:nabad/Cubits/cubits/user_cubit.dart';
 import 'package:nabad/Cubits/states/appointment_state.dart';
+import 'package:nabad/Cubits/states/patient_medical_record_state.dart';
 import 'package:nabad/Cubits/states/user_state.dart';
 import 'package:nabad/Models/appointment_model.dart';
 import 'package:nabad/Models/patient_model.dart';
+import 'package:nabad/Models/patient_medical_record_model.dart';
 import 'package:nabad/core/router/app_router.dart';
 import 'package:nabad/core/theme/nabad_colors.dart';
 
@@ -26,6 +29,7 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
         context.read<UserCubit>().getPatientProfile();
       }
       context.read<AppointmentCubit>().getAppointments();
+      context.read<PatientMedicalRecordCubit>().loadMedicalFile();
     });
   }
 
@@ -81,7 +85,15 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
             );
           }
           if (state is PatientProfileSuccess) {
-            return _ProfileContent(patient: state.patient);
+            return BlocBuilder<
+              PatientMedicalRecordCubit,
+              PatientMedicalRecordState
+            >(
+              builder: (context, medicalState) => _ProfileContent(
+                patient: state.patient,
+                medicalState: medicalState,
+              ),
+            );
           }
           return const Center(child: CircularProgressIndicator());
         },
@@ -94,17 +106,12 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
 
 class _ProfileContent extends StatelessWidget {
   final PatientModel patient;
-  const _ProfileContent({required this.patient});
+  final PatientMedicalRecordState medicalState;
+
+  const _ProfileContent({required this.patient, required this.medicalState});
 
   String _bloodTypeLabel(String? bt) =>
       (bt == null || bt.isEmpty) ? 'غير محدد' : bt.toUpperCase();
-
-  String _genderLabel(String? g) {
-    if (g == null) return 'غير محدد';
-    if (g == 'male' || g == 'ذكر') return 'ذكر';
-    if (g == 'female' || g == 'أنثى') return 'أنثى';
-    return g;
-  }
 
   String _formatDate(String? d) {
     if (d == null || d.isEmpty) return 'غير محدد';
@@ -146,6 +153,17 @@ class _ProfileContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = patient.user;
+    final latestRecord = medicalState.latestRecord;
+    final latestBloodType = latestRecord?.bloodType.isNotEmpty == true
+        ? latestRecord!.bloodType
+        : patient.bloodType;
+    final heartRate = latestRecord?.heartRate?.toString() ?? '--';
+    final allergies = latestRecord?.allergies.isNotEmpty == true
+        ? latestRecord!.allergies
+        : 'لا توجد بيانات';
+    final diseases = latestRecord?.diseases.isNotEmpty == true
+        ? latestRecord!.diseases
+        : 'لا توجد بيانات';
     final fullName = '${user.firstName} ${user.lastName}';
     final initials = fullName
         .trim()
@@ -258,30 +276,34 @@ class _ProfileContent extends StatelessWidget {
                                   size: 16,
                                 ),
                                 const SizedBox(width: 5),
-                                const Text(
-                                  'Heart Rate',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w900,
-                                    color: NabadColors.deepTeal,
+                                const Expanded(
+                                  child: Text(
+                                    'آخر نبض مسجل',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w900,
+                                      color: NabadColors.deepTeal,
+                                    ),
                                   ),
                                 ),
                               ],
                             ),
                             const SizedBox(height: 8),
                             RichText(
-                              text: const TextSpan(
+                              text: TextSpan(
                                 children: [
                                   TextSpan(
-                                    text: '72',
-                                    style: TextStyle(
+                                    text: heartRate,
+                                    style: const TextStyle(
                                       fontSize: 34,
                                       fontWeight: FontWeight.w900,
                                       color: NabadColors.primary,
                                     ),
                                   ),
-                                  TextSpan(
-                                    text: ' b/m',
+                                  const TextSpan(
+                                    text: ' نبضة/دقيقة',
                                     style: TextStyle(
                                       fontSize: 12,
                                       color: NabadColors.mutedText,
@@ -315,13 +337,13 @@ class _ProfileContent extends StatelessWidget {
                                 Row(
                                   children: [
                                     const Icon(
-                                      Icons.water_drop_outlined,
+                                      Icons.warning_amber_rounded,
                                       color: NabadColors.primary,
                                       size: 14,
                                     ),
                                     const SizedBox(width: 4),
                                     const Text(
-                                      'Blood Sugar',
+                                      'الحساسية',
                                       style: TextStyle(
                                         fontSize: 11,
                                         fontWeight: FontWeight.w900,
@@ -331,8 +353,10 @@ class _ProfileContent extends StatelessWidget {
                                   ],
                                 ),
                                 const SizedBox(height: 6),
-                                const Text(
-                                  '90 mg/dL',
+                                Text(
+                                  allergies,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
                                     fontSize: 20,
                                     fontWeight: FontWeight.w900,
@@ -360,19 +384,25 @@ class _ProfileContent extends StatelessWidget {
                                       size: 14,
                                     ),
                                     const SizedBox(width: 4),
-                                    const Text(
-                                      'Blood Pressure',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w900,
-                                        color: NabadColors.deepTeal,
+                                    const Expanded(
+                                      child: Text(
+                                        'الأمراض المزمنة',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w900,
+                                          color: NabadColors.deepTeal,
+                                        ),
                                       ),
                                     ),
                                   ],
                                 ),
                                 const SizedBox(height: 6),
-                                const Text(
-                                  '80/120',
+                                Text(
+                                  diseases,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
                                     fontSize: 20,
                                     fontWeight: FontWeight.w900,
@@ -432,104 +462,61 @@ class _ProfileContent extends StatelessWidget {
 
                 const SizedBox(height: 28),
 
-                // ─── معلومات التواصل ──────────────────────────────────────
-                const _SectionTitle(title: 'معلومات التواصل'),
-                const SizedBox(height: 12),
-                _InfoCard(
-                  children: [
-                    _InfoRow(
-                      icon: Icons.phone_rounded,
-                      label: 'رقم الهاتف',
-                      value: user.phone,
-                    ),
-                    const _Divider(),
-                    _InfoRow(
-                      icon: Icons.email_rounded,
-                      label: 'البريد الإلكتروني',
-                      value: user.email,
-                    ),
-                    const _Divider(),
-                    _InfoRow(
-                      icon: Icons.location_on_rounded,
-                      label: 'العنوان',
-                      value: patient.address ?? 'غير محدد',
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 24),
-
                 // ─── المعلومات الطبية ─────────────────────────────────────
                 const _SectionTitle(title: 'المعلومات الطبية'),
                 const SizedBox(height: 12),
+                _InfoCard(
+                  children: [
+                    _InfoRow(
+                      icon: Icons.bloodtype_rounded,
+                      iconColor: const Color(0xFFE05C5C),
+                      label: 'زمرة الدم',
+                      value: _bloodTypeLabel(latestBloodType),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 24),
 
                 Row(
                   children: [
-                    Expanded(
-                      child: _MiniCard(
-                        icon: Icons.bloodtype_rounded,
-                        iconColor: const Color(0xFFE05C5C),
-                        iconBg: const Color(0xFFFFEDED),
-                        label: 'زمرة الدم',
-                        value: _bloodTypeLabel(patient.bloodType),
-                      ),
+                    const Expanded(
+                      child: _SectionTitle(title: 'سجل الزيارات الطبية'),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _MiniCard(
-                        icon: Icons.wc_rounded,
-                        iconColor: NabadColors.primary,
-                        iconBg: const Color(0xFFC9F3F8),
-                        label: 'الجنس',
-                        value: _genderLabel(patient.gender),
-                      ),
+                    IconButton(
+                      tooltip: 'تحديث الملف الطبي',
+                      onPressed:
+                          medicalState.status ==
+                              PatientMedicalRecordStatus.loading
+                          ? null
+                          : () => context
+                                .read<PatientMedicalRecordCubit>()
+                                .loadMedicalFile(),
+                      icon: const Icon(Icons.refresh_rounded),
+                      color: NabadColors.primary,
                     ),
                   ],
                 ),
                 const SizedBox(height: 12),
-                _InfoCard(
-                  children: [
-                    _InfoRow(
-                      icon: Icons.cake_rounded,
-                      label: 'تاريخ الميلاد',
-                      value: _formatDate(patient.birthDate),
-                    ),
-                  ],
-                ),
+                _MedicalRecordsSection(state: medicalState),
 
                 const SizedBox(height: 24),
 
-                // ─── الحساب ───────────────────────────────────────────────
-                const _SectionTitle(title: 'الحساب'),
-                const SizedBox(height: 12),
-                _InfoCard(
-                  children: [
-                    _InfoRow(
-                      icon: user.emailVerifiedAt != null
-                          ? Icons.verified_rounded
-                          : Icons.pending_rounded,
-                      iconColor: user.emailVerifiedAt != null
-                          ? const Color(0xFF3BB55E)
-                          : Colors.orange,
-                      label: 'حالة البريد',
-                      value: user.emailVerifiedAt != null
-                          ? 'تم التحقق'
-                          : 'لم يتم التحقق بعد',
+                _menuItem(
+                  Icons.person_outline_rounded,
+                  'المعلومات الشخصية',
+                  () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) =>
+                          _PersonalInformationPage(patient: patient),
                     ),
-                  ],
+                  ),
                 ),
-
-                const SizedBox(height: 24),
-
-                _menuItem(Icons.receipt_long_outlined, 'طلباتي', () {}),
-                _menuItem(Icons.biotech_outlined, 'تحاليلي', () {}),
-                _menuItem(Icons.headset_mic_outlined, 'استشاراتي', () {}),
                 _menuItem(
                   Icons.account_balance_wallet_outlined,
                   'محفظتي',
                   () => Navigator.pushNamed(context, AppRoutes.wallet),
                 ),
-                _menuItem(Icons.settings_outlined, 'الإعدادات', () {}),
 
                 const SizedBox(height: 20),
 
@@ -691,6 +678,572 @@ class _ProfileContent extends StatelessWidget {
       ),
     );
   }
+}
+
+class _PersonalInformationPage extends StatelessWidget {
+  final PatientModel patient;
+
+  const _PersonalInformationPage({required this.patient});
+
+  @override
+  Widget build(BuildContext context) {
+    final user = patient.user;
+    final fullName = '${user.firstName} ${user.lastName}'.trim();
+
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF8FBFB),
+        appBar: AppBar(
+          backgroundColor: NabadColors.primary,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          title: const Text(
+            'المعلومات الشخصية',
+            style: TextStyle(fontWeight: FontWeight.w900),
+          ),
+        ),
+        body: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: NabadColors.primary,
+                borderRadius: BorderRadius.circular(26),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 58,
+                    height: 58,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withAlpha(30),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.person_rounded,
+                      color: Colors.white,
+                      size: 30,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          fullName.isEmpty ? 'المريض' : fullName,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        const Text(
+                          'بيانات الحساب الشخصية',
+                          style: TextStyle(
+                            color: Color(0xDFFFFFFF),
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            const _SectionTitle(title: 'البيانات الشخصية'),
+            const SizedBox(height: 12),
+            _InfoCard(
+              children: [
+                _InfoRow(
+                  icon: Icons.wc_rounded,
+                  label: 'الجنس',
+                  value: _personalGenderLabel(patient.gender),
+                ),
+                const _Divider(),
+                _InfoRow(
+                  icon: Icons.cake_rounded,
+                  label: 'تاريخ الميلاد',
+                  value: _formatPersonalDate(patient.birthDate),
+                ),
+                const _Divider(),
+                _InfoRow(
+                  icon: Icons.location_on_rounded,
+                  label: 'العنوان',
+                  value: _personalValue(patient.address),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            const _SectionTitle(title: 'معلومات التواصل'),
+            const SizedBox(height: 12),
+            _InfoCard(
+              children: [
+                _InfoRow(
+                  icon: Icons.phone_rounded,
+                  label: 'رقم الهاتف',
+                  value: _personalValue(user.phone),
+                ),
+                const _Divider(),
+                _InfoRow(
+                  icon: Icons.email_rounded,
+                  label: 'البريد الإلكتروني',
+                  value: _personalValue(user.email),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            const _SectionTitle(title: 'حالة الحساب'),
+            const SizedBox(height: 12),
+            _InfoCard(
+              children: [
+                _InfoRow(
+                  icon: user.emailVerifiedAt != null
+                      ? Icons.verified_rounded
+                      : Icons.pending_rounded,
+                  iconColor: user.emailVerifiedAt != null
+                      ? const Color(0xFF3BB55E)
+                      : Colors.orange,
+                  label: 'حالة البريد الإلكتروني',
+                  value: user.emailVerifiedAt != null
+                      ? 'تم التحقق'
+                      : 'لم يتم التحقق بعد',
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+String _personalGenderLabel(String? gender) {
+  final value = gender?.trim() ?? '';
+  if (value.isEmpty) return 'غير محدد';
+  if (value == 'male' || value == 'ذكر') return 'ذكر';
+  if (value == 'female' || value == 'أنثى') return 'أنثى';
+  return value;
+}
+
+String _personalValue(String? value) {
+  final normalized = value?.trim() ?? '';
+  return normalized.isEmpty ? 'غير محدد' : normalized;
+}
+
+String _formatPersonalDate(String? value) {
+  final normalized = value?.trim() ?? '';
+  if (normalized.isEmpty) return 'غير محدد';
+  final parsed = DateTime.tryParse(normalized);
+  if (parsed == null) return normalized;
+  return '${parsed.year.toString().padLeft(4, '0')}-'
+      '${parsed.month.toString().padLeft(2, '0')}-'
+      '${parsed.day.toString().padLeft(2, '0')}';
+}
+
+class _MedicalRecordsSection extends StatelessWidget {
+  final PatientMedicalRecordState state;
+
+  const _MedicalRecordsSection({required this.state});
+
+  @override
+  Widget build(BuildContext context) {
+    if (state.status == PatientMedicalRecordStatus.loading &&
+        state.records.isEmpty) {
+      return const _MedicalMessage(
+        icon: Icons.sync_rounded,
+        message: 'جاري تحميل السجل الطبي...',
+        loading: true,
+      );
+    }
+    if (state.status == PatientMedicalRecordStatus.failure &&
+        state.records.isEmpty) {
+      return _MedicalMessage(
+        icon: Icons.cloud_off_rounded,
+        message: state.errorMessage ?? 'تعذر تحميل السجل الطبي.',
+        actionLabel: 'إعادة المحاولة',
+        onAction: () =>
+            context.read<PatientMedicalRecordCubit>().loadMedicalFile(),
+      );
+    }
+    if (state.records.isEmpty) {
+      return const _MedicalMessage(
+        icon: Icons.folder_open_rounded,
+        message: 'لا توجد زيارات طبية مسجلة حتى الآن.',
+      );
+    }
+
+    return Column(
+      children: [
+        if (state.status == PatientMedicalRecordStatus.loading)
+          const Padding(
+            padding: EdgeInsets.only(bottom: 8),
+            child: LinearProgressIndicator(minHeight: 2),
+          ),
+        if (state.status == PatientMedicalRecordStatus.failure)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Text(
+              state.errorMessage ?? 'تعذر تحديث الملف الطبي.',
+              style: const TextStyle(color: Colors.redAccent, fontSize: 12),
+            ),
+          ),
+        ...state.records.map(
+          (record) => Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: _MedicalRecordCard(record: record),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MedicalRecordCard extends StatelessWidget {
+  final PatientMedicalRecord record;
+
+  const _MedicalRecordCard({required this.record});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(22),
+      clipBehavior: Clip.antiAlias,
+      child: ExpansionTile(
+        tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
+        leading: Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: const Color(0xFFC9F3F8),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: const Icon(
+            Icons.medical_information_rounded,
+            color: NabadColors.primary,
+          ),
+        ),
+        title: Text(
+          record.diagnosis,
+          style: const TextStyle(
+            color: NabadColors.darkText,
+            fontSize: 15,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        subtitle: Text(
+          '${record.doctorName} • ${_formatMedicalDate(record.date)}',
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            color: NabadColors.mutedText,
+            fontSize: 11.5,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        children: [
+          const Divider(height: 12),
+          _RecordDetail(
+            icon: Icons.monitor_heart_outlined,
+            label: 'نبض القلب',
+            value: record.heartRate == null
+                ? 'غير مسجل'
+                : '${record.heartRate} نبضة/دقيقة',
+          ),
+          _RecordDetail(
+            icon: Icons.bloodtype_outlined,
+            label: 'زمرة الدم',
+            value: _valueOrFallback(record.bloodType),
+          ),
+          _RecordDetail(
+            icon: Icons.warning_amber_rounded,
+            label: 'الحساسية',
+            value: _valueOrFallback(record.allergies),
+          ),
+          _RecordDetail(
+            icon: Icons.healing_outlined,
+            label: 'الأمراض والحالات السابقة',
+            value: _valueOrFallback(record.diseases),
+          ),
+          _RecordDetail(
+            icon: Icons.notes_rounded,
+            label: 'ملاحظات الطبيب',
+            value: _valueOrFallback(record.notes),
+          ),
+          if (record.referredToLaboratory)
+            _RecordDetail(
+              icon: Icons.biotech_outlined,
+              label: 'إحالة المختبر والتحاليل المطلوبة',
+              value: record.laboratoryNotes.isEmpty
+                  ? 'تمت الإحالة إلى المختبر'
+                  : record.laboratoryNotes,
+              highlighted: true,
+            ),
+          if (record.referredToPharmacist && record.prescription == null)
+            const _RecordDetail(
+              icon: Icons.local_pharmacy_outlined,
+              label: 'إحالة الصيدلية',
+              value: 'تمت الإحالة إلى الصيدلي',
+              highlighted: true,
+            ),
+          if (record.prescription != null)
+            _PrescriptionDetails(prescription: record.prescription!),
+        ],
+      ),
+    );
+  }
+}
+
+class _RecordDetail extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final bool highlighted;
+
+  const _RecordDetail({
+    required this.icon,
+    required this.label,
+    required this.value,
+    this.highlighted = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: highlighted
+            ? const Color(0xFFC9F3F8).withAlpha(130)
+            : const Color(0xFFF8FBFB),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 19, color: NabadColors.primary),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(
+                    color: NabadColors.mutedText,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    color: NabadColors.darkText,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PrescriptionDetails extends StatelessWidget {
+  final PatientPrescription prescription;
+
+  const _PrescriptionDetails({required this.prescription});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFEAF8F4),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: NabadColors.primary.withAlpha(35)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(
+                Icons.medication_outlined,
+                color: NabadColors.primary,
+                size: 20,
+              ),
+              SizedBox(width: 8),
+              Text(
+                'الوصفة الطبية',
+                style: TextStyle(
+                  color: NabadColors.deepTeal,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ],
+          ),
+          if (prescription.instructions.isNotEmpty)
+            _PrescriptionText(
+              label: 'التعليمات',
+              value: prescription.instructions,
+            ),
+          if (prescription.notes.isNotEmpty)
+            _PrescriptionText(label: 'ملاحظات', value: prescription.notes),
+          if (prescription.items.isEmpty)
+            const Padding(
+              padding: EdgeInsets.only(top: 10),
+              child: Text(
+                'لا توجد أدوية مسجلة ضمن هذه الوصفة.',
+                style: TextStyle(color: NabadColors.mutedText, fontSize: 12),
+              ),
+            )
+          else
+            ...prescription.items.map(
+              (item) => Container(
+                width: double.infinity,
+                margin: const EdgeInsets.only(top: 10),
+                padding: const EdgeInsets.all(11),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(13),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.name,
+                      style: const TextStyle(
+                        color: NabadColors.darkText,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      [
+                        if (item.dosage.isNotEmpty) 'الجرعة: ${item.dosage}',
+                        if (item.frequency.isNotEmpty)
+                          'التكرار: ${item.frequency}',
+                        if (item.duration.isNotEmpty) 'المدة: ${item.duration}',
+                        if (item.notes.isNotEmpty) 'ملاحظات: ${item.notes}',
+                      ].join(' • '),
+                      style: const TextStyle(
+                        color: NabadColors.mutedText,
+                        fontSize: 12,
+                        height: 1.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PrescriptionText extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _PrescriptionText({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 9),
+      child: Text(
+        '$label: $value',
+        style: const TextStyle(
+          color: NabadColors.darkText,
+          fontSize: 12.5,
+          height: 1.4,
+        ),
+      ),
+    );
+  }
+}
+
+class _MedicalMessage extends StatelessWidget {
+  final IconData icon;
+  final String message;
+  final bool loading;
+  final String? actionLabel;
+  final VoidCallback? onAction;
+
+  const _MedicalMessage({
+    required this.icon,
+    required this.message,
+    this.loading = false,
+    this.actionLabel,
+    this.onAction,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+      ),
+      child: Column(
+        children: [
+          loading
+              ? const SizedBox(
+                  width: 28,
+                  height: 28,
+                  child: CircularProgressIndicator(strokeWidth: 2.5),
+                )
+              : Icon(icon, color: NabadColors.primary, size: 32),
+          const SizedBox(height: 10),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: NabadColors.mutedText,
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          if (actionLabel != null && onAction != null) ...[
+            const SizedBox(height: 10),
+            TextButton(onPressed: onAction, child: Text(actionLabel!)),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+String _valueOrFallback(String value) =>
+    value.trim().isEmpty ? 'غير مسجل' : value.trim();
+
+String _formatMedicalDate(String value) {
+  if (value.trim().isEmpty) return 'تاريخ غير محدد';
+  final parsed = DateTime.tryParse(value);
+  if (parsed == null) return value.split('T').first;
+  return '${parsed.year.toString().padLeft(4, '0')}-'
+      '${parsed.month.toString().padLeft(2, '0')}-'
+      '${parsed.day.toString().padLeft(2, '0')}';
 }
 
 class _ActionCard extends StatelessWidget {
@@ -906,72 +1459,6 @@ class _Divider extends StatelessWidget {
       thickness: 1,
       color: NabadColors.primary.withAlpha(12),
       indent: 36,
-    );
-  }
-}
-
-class _MiniCard extends StatelessWidget {
-  final IconData icon;
-  final Color iconColor;
-  final Color iconBg;
-  final String label;
-  final String value;
-
-  const _MiniCard({
-    required this.icon,
-    required this.iconColor,
-    required this.iconBg,
-    required this.label,
-    required this.value,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
-        boxShadow: [
-          BoxShadow(
-            color: NabadColors.primary.withAlpha(10),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: iconBg,
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Icon(icon, color: iconColor, size: 22),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            label,
-            style: const TextStyle(
-              color: NabadColors.mutedText,
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: const TextStyle(
-              color: NabadColors.darkText,
-              fontSize: 18,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
