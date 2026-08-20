@@ -1,11 +1,18 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:nabad/Cubits/cubits/doctor_dashboard_cubit.dart';
+import 'package:nabad/Cubits/cubits/appointment_cubit.dart';
 import 'package:nabad/Cubits/cubits/user_cubit.dart';
 import 'package:nabad/Cubits/states/doctor_dashboard_state.dart';
 import 'package:nabad/Cubits/states/user_state.dart';
 import 'package:nabad/Models/doctor_dashboard_model.dart';
+import 'package:nabad/Models/doctor_schedule_model.dart';
+import 'package:nabad/Models/doctor_availability_model.dart';
 import 'package:nabad/core/router/app_router.dart';
+import 'package:nabad/screens/HomePage_patient/wallet_screen.dart';
 
 const _ink = Color(0xFF172A35);
 const _muted = Color(0xFF697783);
@@ -22,15 +29,35 @@ class DoctorHomePage extends StatefulWidget {
   State<DoctorHomePage> createState() => _DoctorHomePageState();
 }
 
-class _DoctorHomePageState extends State<DoctorHomePage> {
+class _DoctorHomePageState extends State<DoctorHomePage>
+    with WidgetsBindingObserver {
   int _selectedIndex = 0;
+  Timer? _refreshTimer;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) context.read<DoctorDashboardCubit>().loadDashboard();
     });
+    _refreshTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+      if (mounted) context.read<DoctorDashboardCubit>().refreshLiveData();
+    });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      context.read<DoctorDashboardCubit>().refreshLiveData();
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _refreshTimer?.cancel();
+    super.dispose();
   }
 
   @override
@@ -68,31 +95,40 @@ class _DoctorHomePageState extends State<DoctorHomePage> {
           },
         ),
       ],
-      child: Directionality(
-        textDirection: TextDirection.rtl,
-        child: Scaffold(
-          backgroundColor: _background,
-          body: BlocBuilder<DoctorDashboardCubit, DoctorDashboardState>(
-            builder: (context, state) {
-              final firstLoad =
-                  state.profile == null &&
-                  (state.status == DoctorDashboardStatus.initial ||
-                      state.status == DoctorDashboardStatus.loading);
-              if (firstLoad) return const _LoadingView();
-              if (state.profile == null &&
-                  state.status == DoctorDashboardStatus.failure) {
-                return _FailureView(
-                  message: state.errorMessage ?? 'تعذر تحميل بيانات الطبيب.',
-                  onRetry: () =>
-                      context.read<DoctorDashboardCubit>().loadDashboard(),
-                );
-              }
-              return _selectedPage(state);
-            },
-          ),
-          bottomNavigationBar: _DoctorBottomBar(
-            selectedIndex: _selectedIndex,
-            onSelected: (index) => setState(() => _selectedIndex = index),
+      child: PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, result) {
+          if (!didPop) SystemNavigator.pop();
+        },
+        child: Directionality(
+          textDirection: TextDirection.rtl,
+          child: Scaffold(
+            backgroundColor: _background,
+            body: BlocBuilder<DoctorDashboardCubit, DoctorDashboardState>(
+              builder: (context, state) {
+                final firstLoad =
+                    state.profile == null &&
+                    (state.status == DoctorDashboardStatus.initial ||
+                        state.status == DoctorDashboardStatus.loading);
+                if (firstLoad) return const _LoadingView();
+                if (state.profile == null &&
+                    state.status == DoctorDashboardStatus.failure) {
+                  return _FailureView(
+                    message: state.errorMessage ?? 'تعذر تحميل بيانات الطبيب.',
+                    onRetry: () =>
+                        context.read<DoctorDashboardCubit>().loadDashboard(),
+                  );
+                }
+                return _selectedPage(state);
+              },
+            ),
+            bottomNavigationBar: _DoctorBottomBar(
+              selectedIndex: _selectedIndex,
+              onSelected: (index) {
+                setState(() => _selectedIndex = index);
+                context.read<DoctorDashboardCubit>().refreshLiveData();
+              },
+            ),
           ),
         ),
       ),
@@ -1738,57 +1774,376 @@ class _RecordCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(15),
-      decoration: _whiteCardDecoration(21),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const CircleAvatar(
-            radius: 24,
-            backgroundColor: _paleTeal,
-            foregroundColor: _teal,
-            child: Icon(Icons.description_outlined),
+    return GestureDetector(
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => _MedicalRecordDetailsPage(record: record),
+        ),
+      ),
+      child: Container(
+        width: double.infinity,
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(15),
+        decoration: _whiteCardDecoration(21),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const CircleAvatar(
+              radius: 24,
+              backgroundColor: _paleTeal,
+              foregroundColor: _teal,
+              child: Icon(Icons.description_outlined),
+            ),
+            const SizedBox(width: 11),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    record.patientName,
+                    style: const TextStyle(
+                      color: _ink,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    record.diagnosis,
+                    style: const TextStyle(color: _muted, fontSize: 13),
+                  ),
+                  if (record.notes.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      record.notes,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: _muted, fontSize: 12),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            Text(
+              _formatDate(record.date),
+              style: const TextStyle(color: _muted, fontSize: 11),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MedicalRecordDetailsPage extends StatefulWidget {
+  final DoctorMedicalRecord record;
+
+  const _MedicalRecordDetailsPage({required this.record});
+
+  @override
+  State<_MedicalRecordDetailsPage> createState() =>
+      _MedicalRecordDetailsPageState();
+}
+
+class _MedicalRecordDetailsPageState extends State<_MedicalRecordDetailsPage> {
+  late DoctorMedicalRecord _record;
+  late final TextEditingController _diagnosis;
+  late final TextEditingController _diseases;
+  late final TextEditingController _bloodType;
+  late final TextEditingController _heartRate;
+  late final TextEditingController _allergies;
+  late final TextEditingController _notes;
+  late final TextEditingController _laboratoryNotes;
+  late bool _referToPharmacist;
+  late bool _referToLaboratory;
+  bool _editing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _record = widget.record;
+    _diagnosis = TextEditingController(text: _record.diagnosis);
+    _diseases = TextEditingController(text: _record.diseases);
+    _bloodType = TextEditingController(text: _record.bloodType);
+    _heartRate = TextEditingController(
+      text: _record.heartRate?.toString() ?? '',
+    );
+    _allergies = TextEditingController(text: _record.allergies);
+    _notes = TextEditingController(text: _record.notes);
+    _laboratoryNotes = TextEditingController(text: _record.laboratoryNotes);
+    _referToPharmacist = _record.referredToPharmacist;
+    _referToLaboratory = _record.referredToLaboratory;
+  }
+
+  @override
+  void dispose() {
+    _diagnosis.dispose();
+    _diseases.dispose();
+    _bloodType.dispose();
+    _heartRate.dispose();
+    _allergies.dispose();
+    _notes.dispose();
+    _laboratoryNotes.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<DoctorDashboardCubit, DoctorDashboardState>(
+      builder: (context, state) {
+        return Scaffold(
+          backgroundColor: _background,
+          appBar: AppBar(
+            title: const Text('تفاصيل السجل الطبي'),
+            actions: [
+              IconButton(
+                tooltip: _editing ? 'إلغاء التعديل' : 'تعديل',
+                onPressed: state.actionLoading
+                    ? null
+                    : () => setState(() => _editing = !_editing),
+                icon: Icon(
+                  _editing ? Icons.close_rounded : Icons.edit_outlined,
+                ),
+              ),
+              IconButton(
+                tooltip: 'حذف',
+                onPressed: state.actionLoading ? null : _confirmDelete,
+                icon: const Icon(Icons.delete_outline_rounded, color: _danger),
+              ),
+            ],
           ),
-          const SizedBox(width: 11),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          body: SafeArea(
+            child: ListView(
+              padding: const EdgeInsets.all(18),
               children: [
-                Text(
-                  record.patientName,
-                  style: const TextStyle(
-                    color: _ink,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
+                Container(
+                  padding: const EdgeInsets.all(18),
+                  decoration: _whiteCardDecoration(22),
+                  child: Column(
+                    children: [
+                      const CircleAvatar(
+                        radius: 28,
+                        backgroundColor: _paleTeal,
+                        foregroundColor: _teal,
+                        child: Icon(Icons.person_outline_rounded, size: 30),
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        _record.patientName,
+                        style: const TextStyle(
+                          color: _ink,
+                          fontSize: 19,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'تاريخ السجل: ${_formatDate(_record.date)}',
+                        style: const TextStyle(color: _muted, fontSize: 12),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 5),
-                Text(
-                  record.diagnosis,
-                  style: const TextStyle(color: _muted, fontSize: 13),
+                const SizedBox(height: 14),
+                _recordField('التشخيص', _diagnosis, required: true),
+                _recordField('الأمراض المزمنة', _diseases),
+                Row(
+                  children: [
+                    Expanded(child: _recordField('فصيلة الدم', _bloodType)),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _recordField(
+                        'نبض القلب',
+                        _heartRate,
+                        keyboardType: TextInputType.number,
+                      ),
+                    ),
+                  ],
                 ),
-                if (record.notes.isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    record.notes,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: _muted, fontSize: 12),
+                _recordField('الحساسيات', _allergies),
+                _recordField('ملاحظات الطبيب', _notes, maxLines: 3),
+                _recordSwitch(
+                  title: 'إحالة إلى الصيدلية',
+                  value: _referToPharmacist,
+                  onChanged: (value) =>
+                      setState(() => _referToPharmacist = value),
+                ),
+                _recordSwitch(
+                  title: 'إحالة إلى المختبر',
+                  value: _referToLaboratory,
+                  onChanged: (value) =>
+                      setState(() => _referToLaboratory = value),
+                ),
+                if (_referToLaboratory)
+                  _recordField(
+                    'ملاحظات المختبر',
+                    _laboratoryNotes,
+                    maxLines: 3,
+                  ),
+                if (_record.laboratoryStatus.isNotEmpty && !_editing)
+                  ListTile(
+                    leading: const Icon(Icons.science_outlined, color: _teal),
+                    title: const Text('حالة طلب المختبر'),
+                    trailing: Text(_record.laboratoryStatus),
+                  ),
+                if (_editing) ...[
+                  const SizedBox(height: 10),
+                  FilledButton.icon(
+                    onPressed: state.actionLoading ? null : _save,
+                    icon: state.actionLoading
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(Icons.save_outlined),
+                    label: const Text('حفظ التعديلات'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: _teal,
+                      minimumSize: const Size.fromHeight(52),
+                    ),
                   ),
                 ],
               ],
             ),
           ),
-          Text(
-            _formatDate(record.date),
-            style: const TextStyle(color: _muted, fontSize: 11),
+        );
+      },
+    );
+  }
+
+  Widget _recordField(
+    String label,
+    TextEditingController controller, {
+    int maxLines = 1,
+    bool required = false,
+    TextInputType? keyboardType,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 11),
+      child: TextFormField(
+        controller: controller,
+        readOnly: !_editing,
+        maxLines: maxLines,
+        keyboardType: keyboardType,
+        decoration: InputDecoration(
+          labelText: required ? '$label *' : label,
+          filled: true,
+          fillColor: _editing ? Colors.white : const Color(0xFFF4F8F8),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
+        ),
+      ),
+    );
+  }
+
+  Widget _recordSwitch({
+    required String title,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return SwitchListTile(
+      contentPadding: EdgeInsets.zero,
+      title: Text(title),
+      value: value,
+      activeThumbColor: _teal,
+      onChanged: _editing ? onChanged : null,
+    );
+  }
+
+  Future<void> _save() async {
+    if (_diagnosis.text.trim().isEmpty) {
+      _message('يرجى إدخال التشخيص.');
+      return;
+    }
+    final heartRateText = _heartRate.text.trim();
+    final heartRate = heartRateText.isEmpty
+        ? null
+        : int.tryParse(heartRateText);
+    if (heartRateText.isNotEmpty && heartRate == null) {
+      _message('نبض القلب يجب أن يكون رقماً صحيحاً.');
+      return;
+    }
+    final success = await context
+        .read<DoctorDashboardCubit>()
+        .updateMedicalRecord(_record.id, {
+          'diagnosis': _diagnosis.text.trim(),
+          'diseases': _diseases.text.trim(),
+          'blood_type': _bloodType.text.trim(),
+          if (heartRate != null) 'heart_rate': heartRate,
+          'allergies': _allergies.text.trim(),
+          'notes': _notes.text.trim(),
+          'refer_to_pharmacist': _referToPharmacist,
+          'refer_to_laboratory': _referToLaboratory,
+          'laboratory_notes': _laboratoryNotes.text.trim(),
+        });
+    if (!mounted) return;
+    if (success) {
+      setState(() {
+        _record = _record.copyWith(
+          diagnosis: _diagnosis.text.trim(),
+          diseases: _diseases.text.trim(),
+          bloodType: _bloodType.text.trim(),
+          heartRate: heartRate,
+          allergies: _allergies.text.trim(),
+          notes: _notes.text.trim(),
+          referredToPharmacist: _referToPharmacist,
+          referredToLaboratory: _referToLaboratory,
+          laboratoryNotes: _laboratoryNotes.text.trim(),
+        );
+        _editing = false;
+      });
+      _message('تم حفظ التعديلات.');
+    } else {
+      _message(
+        context.read<DoctorDashboardCubit>().state.errorMessage ??
+            'تعذر تعديل السجل.',
+      );
+    }
+  }
+
+  Future<void> _confirmDelete() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('حذف السجل الطبي؟'),
+        content: const Text(
+          'سيتم حذف السجل نهائياً ولا يمكن التراجع عن هذه العملية.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('إلغاء'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: _danger),
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('حذف'),
           ),
         ],
       ),
     );
+    if (confirmed != true || !mounted) return;
+    final success = await context
+        .read<DoctorDashboardCubit>()
+        .deleteMedicalRecord(_record.id);
+    if (!mounted) return;
+    if (success) {
+      Navigator.pop(context);
+    } else {
+      _message(
+        context.read<DoctorDashboardCubit>().state.errorMessage ??
+            'تعذر حذف السجل.',
+      );
+    }
+  }
+
+  void _message(String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
   }
 }
 
@@ -1849,6 +2204,64 @@ class _AccountPage extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 17),
+          Container(
+            decoration: _whiteCardDecoration(20),
+            child: ListTile(
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 18,
+                vertical: 6,
+              ),
+              leading: const CircleAvatar(
+                backgroundColor: _paleTeal,
+                foregroundColor: _teal,
+                child: Icon(Icons.calendar_month_outlined),
+              ),
+              title: const Text(
+                'جدول الدوام',
+                style: TextStyle(color: _ink, fontWeight: FontWeight.w800),
+              ),
+              subtitle: const Text('ساعات العمل والأيام المتاحة'),
+              trailing: const Icon(Icons.chevron_left_rounded, color: _teal),
+              onTap: profile == null || profile.doctorId == 0
+                  ? null
+                  : () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) =>
+                            _DoctorSchedulePage(doctorId: profile.doctorId),
+                      ),
+                    ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Container(
+            decoration: _whiteCardDecoration(20),
+            child: ListTile(
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 18,
+                vertical: 6,
+              ),
+              leading: const CircleAvatar(
+                backgroundColor: _paleTeal,
+                foregroundColor: _teal,
+                child: Icon(Icons.account_balance_wallet_outlined),
+              ),
+              title: const Text(
+                'محفظتي',
+                style: TextStyle(color: _ink, fontWeight: FontWeight.w800),
+              ),
+              subtitle: const Text('عرض الرصيد وسجل الحركات'),
+              trailing: const Icon(Icons.chevron_left_rounded, color: _teal),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const WalletScreen(
+                    title: 'محفظة الدكتور',
+                    allowTopUp: false,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 17),
           BlocBuilder<UserCubit, UserState>(
             builder: (context, userState) {
               final loading = userState is LogoutLoading;
@@ -1882,6 +2295,238 @@ class _AccountPage extends StatelessWidget {
       ),
     );
   }
+}
+
+class _DoctorSchedulePage extends StatefulWidget {
+  final int doctorId;
+
+  const _DoctorSchedulePage({required this.doctorId});
+
+  @override
+  State<_DoctorSchedulePage> createState() => _DoctorSchedulePageState();
+}
+
+class _DoctorSchedulePageState extends State<_DoctorSchedulePage> {
+  List<DoctorScheduleModel> _schedule = const [];
+  List<DoctorAvailableDateModel> _dates = const [];
+  bool _loading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    final now = DateTime.now();
+    try {
+      final results = await Future.wait<dynamic>([
+        context.read<AppointmentCubit>().getDoctorSchedule(widget.doctorId),
+        context.read<AppointmentCubit>().getDoctorAvailableDates(
+          doctorId: widget.doctorId,
+          from: now,
+          to: now.add(const Duration(days: 13)),
+        ),
+      ]);
+      if (!mounted) return;
+      final schedule = [...results[0] as List<DoctorScheduleModel>]
+        ..sort((a, b) => _dayOrder(a.day).compareTo(_dayOrder(b.day)));
+      setState(() {
+        _schedule = schedule;
+        _dates = results[1] as List<DoctorAvailableDateModel>;
+        _loading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = 'تعذر تحميل جدول الدوام. حاول مجدداً.';
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        backgroundColor: _background,
+        appBar: AppBar(
+          title: const Text('جدول الدوام'),
+          backgroundColor: _background,
+          surfaceTintColor: Colors.transparent,
+        ),
+        body: _loading
+            ? const Center(child: CircularProgressIndicator())
+            : _error != null
+            ? _FailureView(message: _error!, onRetry: _load)
+            : RefreshIndicator(
+                onRefresh: _load,
+                child: ListView(
+                  padding: const EdgeInsets.all(18),
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(15),
+                      decoration: BoxDecoration(
+                        color: _paleTeal,
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.info_outline_rounded, color: _teal),
+                          SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'تعديل الدوام والإجازات يتم من لوحة الإدارة.',
+                              style: TextStyle(
+                                color: _deepTeal,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    const Text(
+                      'البرنامج الأسبوعي',
+                      style: TextStyle(
+                        color: _ink,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    if (_schedule.isEmpty)
+                      const _EmptyState(
+                        icon: Icons.event_busy_outlined,
+                        message: 'لم يتم تحديد جدول دوام بعد',
+                      )
+                    else
+                      ..._schedule.map(
+                        (item) => Container(
+                          margin: const EdgeInsets.only(bottom: 9),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 14,
+                          ),
+                          decoration: _whiteCardDecoration(18),
+                          child: Row(
+                            children: [
+                              const CircleAvatar(
+                                backgroundColor: _paleTeal,
+                                foregroundColor: _teal,
+                                child: Icon(Icons.schedule_rounded),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  _arabicDay(item.day),
+                                  style: const TextStyle(
+                                    color: _ink,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ),
+                              Text(
+                                '${_shortTime(item.startTime)} – ${_shortTime(item.endTime)}',
+                                textDirection: TextDirection.ltr,
+                                style: const TextStyle(
+                                  color: _teal,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    const SizedBox(height: 20),
+                    const Text(
+                      'التوفر خلال الأسبوعين القادمين',
+                      style: TextStyle(
+                        color: _ink,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    ..._dates.map((item) {
+                      final available = item.isAvailable;
+                      return ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                        ),
+                        leading: Icon(
+                          available
+                              ? Icons.event_available_rounded
+                              : Icons.event_busy_rounded,
+                          color: available ? _teal : _danger,
+                        ),
+                        title: Text(
+                          '${_arabicWeekday(item.date.weekday)}، ${item.date.day}/${item.date.month}',
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                        trailing: Text(
+                          available
+                              ? '${item.availableSlots} موعد متاح'
+                              : 'غير متاح',
+                          style: TextStyle(
+                            color: available ? _teal : _danger,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      );
+                    }),
+                  ],
+                ),
+              ),
+      ),
+    );
+  }
+
+  int _dayOrder(String day) =>
+      const {
+        'Saturday': 1,
+        'Sunday': 2,
+        'Monday': 3,
+        'Tuesday': 4,
+        'Wednesday': 5,
+        'Thursday': 6,
+        'Friday': 7,
+      }[day] ??
+      8;
+
+  String _arabicDay(String day) =>
+      const {
+        'Saturday': 'السبت',
+        'Sunday': 'الأحد',
+        'Monday': 'الاثنين',
+        'Tuesday': 'الثلاثاء',
+        'Wednesday': 'الأربعاء',
+        'Thursday': 'الخميس',
+        'Friday': 'الجمعة',
+      }[day] ??
+      day;
+
+  String _arabicWeekday(int day) =>
+      const {
+        1: 'الاثنين',
+        2: 'الثلاثاء',
+        3: 'الأربعاء',
+        4: 'الخميس',
+        5: 'الجمعة',
+        6: 'السبت',
+        7: 'الأحد',
+      }[day] ??
+      '';
+
+  String _shortTime(String value) =>
+      value.length >= 5 ? value.substring(0, 5) : value;
 }
 
 class _InfoRow extends StatelessWidget {
@@ -2087,9 +2732,356 @@ class _PrescriptionsPage extends StatelessWidget {
               ? '${item.itemsCount} أدوية'
               : item.instructions,
           trailing: _formatDate(item.date),
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => _PrescriptionDetailsPage(summary: item),
+            ),
+          ),
         );
       },
     );
+  }
+}
+
+class _PrescriptionDetailsPage extends StatefulWidget {
+  final DoctorPrescription summary;
+
+  const _PrescriptionDetailsPage({required this.summary});
+
+  @override
+  State<_PrescriptionDetailsPage> createState() =>
+      _PrescriptionDetailsPageState();
+}
+
+class _PrescriptionDetailsPageState extends State<_PrescriptionDetailsPage> {
+  DoctorPrescription? _prescription;
+  final _instructions = TextEditingController();
+  final _notes = TextEditingController();
+  List<VisitMedicineInput> _items = [];
+  bool _loading = true;
+  bool _editing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  @override
+  void dispose() {
+    _instructions.dispose();
+    _notes.dispose();
+    super.dispose();
+  }
+
+  Future<void> _load() async {
+    final result = await context
+        .read<DoctorDashboardCubit>()
+        .loadPrescriptionDetails(widget.summary.id);
+    if (!mounted) return;
+    setState(() {
+      _prescription = result;
+      _instructions.text = result?.instructions ?? '';
+      _notes.text = result?.notes ?? '';
+      _items = [...?result?.items];
+      _loading = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final prescription = _prescription;
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        backgroundColor: _background,
+        appBar: AppBar(
+          title: const Text('تفاصيل الوصفة'),
+          backgroundColor: _background,
+          surfaceTintColor: Colors.transparent,
+          actions: prescription == null
+              ? null
+              : [
+                  if (prescription.status == 'pending')
+                    IconButton(
+                      tooltip: _editing ? 'إلغاء التعديل' : 'تعديل الوصفة',
+                      onPressed: () => setState(() => _editing = !_editing),
+                      icon: Icon(
+                        _editing ? Icons.close_rounded : Icons.edit_outlined,
+                      ),
+                    ),
+                  IconButton(
+                    tooltip: 'حذف الوصفة',
+                    onPressed: _confirmDelete,
+                    icon: const Icon(
+                      Icons.delete_outline_rounded,
+                      color: _danger,
+                    ),
+                  ),
+                ],
+        ),
+        body: _loading
+            ? const Center(child: CircularProgressIndicator())
+            : prescription == null
+            ? _FailureView(
+                message:
+                    context.read<DoctorDashboardCubit>().state.errorMessage ??
+                    'تعذر تحميل تفاصيل الوصفة.',
+                onRetry: _load,
+              )
+            : BlocBuilder<DoctorDashboardCubit, DoctorDashboardState>(
+                builder: (context, state) => ListView(
+                  padding: const EdgeInsets.all(18),
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(18),
+                      decoration: _whiteCardDecoration(22),
+                      child: Column(
+                        children: [
+                          const CircleAvatar(
+                            radius: 27,
+                            backgroundColor: _paleTeal,
+                            foregroundColor: _teal,
+                            child: Icon(Icons.medication_outlined, size: 29),
+                          ),
+                          const SizedBox(height: 10),
+                          Text(
+                            prescription.patientName,
+                            style: const TextStyle(
+                              color: _ink,
+                              fontSize: 19,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          const SizedBox(height: 5),
+                          Text(
+                            'الحالة: ${_prescriptionStatus(prescription.status)}',
+                            style: const TextStyle(
+                              color: _teal,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          if (prescription.date.isNotEmpty)
+                            Text(
+                              'تاريخ الإصدار: ${_formatDate(prescription.date)}',
+                              style: const TextStyle(
+                                color: _muted,
+                                fontSize: 12,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    _prescriptionField('التعليمات', _instructions, maxLines: 3),
+                    _prescriptionField('ملاحظات', _notes, maxLines: 3),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'الأدوية',
+                          style: TextStyle(
+                            color: _ink,
+                            fontSize: 17,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        if (_editing)
+                          TextButton.icon(
+                            onPressed: _addMedicine,
+                            icon: const Icon(Icons.add_rounded),
+                            label: const Text('إضافة دواء'),
+                          ),
+                      ],
+                    ),
+                    if (_items.isEmpty)
+                      const _EmptyState(
+                        icon: Icons.medication_outlined,
+                        message: 'لا توجد أدوية في الوصفة',
+                      )
+                    else
+                      ..._items.asMap().entries.map(
+                        (entry) => Card(
+                          elevation: 0,
+                          color: Colors.white,
+                          child: ListTile(
+                            leading: const CircleAvatar(
+                              backgroundColor: _paleTeal,
+                              foregroundColor: _teal,
+                              child: Icon(Icons.medication_outlined),
+                            ),
+                            title: Text(
+                              entry.value.name,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            subtitle: Text(
+                              [
+                                entry.value.dosage,
+                                entry.value.frequency,
+                                entry.value.duration,
+                                entry.value.notes,
+                              ].where((text) => text.isNotEmpty).join(' • '),
+                            ),
+                            trailing: _editing
+                                ? IconButton(
+                                    onPressed: () => setState(
+                                      () => _items.removeAt(entry.key),
+                                    ),
+                                    icon: const Icon(
+                                      Icons.delete_outline_rounded,
+                                      color: _danger,
+                                    ),
+                                  )
+                                : null,
+                          ),
+                        ),
+                      ),
+                    if (_editing) ...[
+                      const SizedBox(height: 14),
+                      FilledButton.icon(
+                        onPressed: state.actionLoading ? null : _save,
+                        icon: state.actionLoading
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Icon(Icons.save_outlined),
+                        label: const Text('حفظ التعديلات'),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: _teal,
+                          minimumSize: const Size.fromHeight(52),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+      ),
+    );
+  }
+
+  Widget _prescriptionField(
+    String label,
+    TextEditingController controller, {
+    int maxLines = 1,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: TextField(
+        controller: controller,
+        readOnly: !_editing,
+        maxLines: maxLines,
+        decoration: InputDecoration(
+          labelText: label,
+          filled: true,
+          fillColor: _editing ? Colors.white : const Color(0xFFF4F8F8),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _addMedicine() async {
+    final medicine = await showModalBottomSheet<VisitMedicineInput>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _AddMedicineSheet(
+        knownMedicines: context.read<DoctorDashboardCubit>().state.medicines,
+      ),
+    );
+    if (medicine != null && mounted) {
+      setState(() => _items.add(medicine));
+    }
+  }
+
+  Future<void> _save() async {
+    final prescription = _prescription;
+    if (prescription == null || _items.isEmpty) {
+      _message('يجب أن تحتوي الوصفة على دواء واحد على الأقل.');
+      return;
+    }
+    final success = await context
+        .read<DoctorDashboardCubit>()
+        .updatePrescription(
+          prescriptionId: prescription.id,
+          medicalRecordId: prescription.medicalRecordId,
+          instructions: _instructions.text,
+          notes: _notes.text,
+          items: _items,
+        );
+    if (!mounted) return;
+    if (success) {
+      setState(() => _editing = false);
+      await _load();
+      if (mounted) _message('تم تعديل الوصفة بنجاح.');
+    } else {
+      _message(
+        context.read<DoctorDashboardCubit>().state.errorMessage ??
+            'تعذر تعديل الوصفة.',
+      );
+    }
+  }
+
+  Future<void> _confirmDelete() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('حذف الوصفة؟'),
+        content: const Text('سيتم حذف الوصفة وأدويتها نهائياً.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('إلغاء'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: _danger),
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('حذف'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    final success = await context
+        .read<DoctorDashboardCubit>()
+        .deletePrescription(widget.summary.id);
+    if (!mounted) return;
+    if (success) {
+      Navigator.pop(context);
+    } else {
+      _message(
+        context.read<DoctorDashboardCubit>().state.errorMessage ??
+            'تعذر حذف الوصفة.',
+      );
+    }
+  }
+
+  String _prescriptionStatus(String status) {
+    switch (status) {
+      case 'pending':
+        return 'بانتظار الصرف';
+      case 'priced':
+        return 'تم التسعير';
+      case 'paid':
+        return 'مدفوعة';
+      case 'dispensed':
+        return 'تم الصرف';
+      default:
+        return status;
+    }
+  }
+
+  void _message(String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
   }
 }
 
@@ -2166,53 +3158,58 @@ class _SimpleDataCard extends StatelessWidget {
   final String title;
   final String subtitle;
   final String trailing;
+  final VoidCallback? onTap;
 
   const _SimpleDataCard({
     required this.icon,
     required this.title,
     required this.subtitle,
     required this.trailing,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(15),
-      decoration: _whiteCardDecoration(21),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 23,
-            backgroundColor: _paleTeal,
-            foregroundColor: _teal,
-            child: Icon(icon),
-          ),
-          const SizedBox(width: 11),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    color: _ink,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 5),
-                Text(
-                  subtitle,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: _muted, fontSize: 12.5),
-                ),
-              ],
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(15),
+        decoration: _whiteCardDecoration(21),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 23,
+              backgroundColor: _paleTeal,
+              foregroundColor: _teal,
+              child: Icon(icon),
             ),
-          ),
-          const SizedBox(width: 7),
-          Text(trailing, style: const TextStyle(color: _muted, fontSize: 11)),
-        ],
+            const SizedBox(width: 11),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: _ink,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    subtitle,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: _muted, fontSize: 12.5),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 7),
+            Text(trailing, style: const TextStyle(color: _muted, fontSize: 11)),
+          ],
+        ),
       ),
     );
   }

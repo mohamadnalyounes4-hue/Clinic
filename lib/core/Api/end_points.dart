@@ -1,6 +1,5 @@
 class EndPoints {
-  static String baseUrl =
-      "http://10.69.138.185:8000/api/"; // عالموبايل و بيتغير
+  static String baseUrl = "http://10.37.175.41:8000/api/"; // عالموبايل و بيتغير
   // static String baseUrl = "http://10.0.2.2:8000/api/";          //عالمحاكي
 
   // Auth
@@ -29,6 +28,9 @@ class EndPoints {
   static String doctorById(Object id) => "doctor/$id";
   static String deleteDoctor(Object id) => "delete_doctor/$id";
   static String doctorSchedule(Object id) => "doctor_schedule/$id";
+  static String doctorAvailableDates(Object id) =>
+      "doctors/$id/available-dates";
+  static String doctorAvailability(Object id) => "doctors/$id/availability";
   static String myDoctorAppointments = "doctor/appointments/mine";
   static String doctorAppointments = "doctor/appointments";
   static String allAppointments = "all_appointments";
@@ -36,10 +38,14 @@ class EndPoints {
   // Doctor workspace
   static String doctorMedicalRecords = "medical_record_doctor";
   static String patientMedicalRecords = "medical_record_patient";
+  static String patientPrescriptions = "patient/prescriptions";
+  static String patientPrescriptionById(Object id) =>
+      "patient/prescriptions/$id";
   static String medicalRecords = "medical_record";
   static String medicalRecordById(Object id) => "medical_record/$id";
   static String prescriptions = "prescriptions";
   static String prescriptionById(Object id) => "prescriptions/$id";
+  static String deletePrescription(Object id) => "delete_prescription/$id";
   static String medicines = "medicines";
   static String medicinesList = "medicines_list";
 
@@ -62,6 +68,7 @@ class EndPoints {
 
   // Loyalty Points
   static String points = "points";
+  static String pointsTransactions = "points/transactions";
   static String pointsPreview = "points/preview";
 
   // Wallet

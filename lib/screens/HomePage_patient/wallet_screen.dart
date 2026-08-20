@@ -6,7 +6,14 @@ import 'package:nabad/Models/wallet_model.dart';
 import 'package:nabad/core/theme/nabad_colors.dart';
 
 class WalletScreen extends StatefulWidget {
-  const WalletScreen({super.key});
+  final String title;
+  final bool allowTopUp;
+
+  const WalletScreen({
+    super.key,
+    this.title = 'محفظتي',
+    this.allowTopUp = true,
+  });
 
   @override
   State<WalletScreen> createState() => _WalletScreenState();
@@ -60,7 +67,7 @@ class _WalletScreenState extends State<WalletScreen> {
       child: Scaffold(
         backgroundColor: NabadColors.background,
         appBar: AppBar(
-          title: const Text('محفظتي'),
+          title: Text(widget.title),
           centerTitle: true,
           backgroundColor: NabadColors.background,
           elevation: 0,
@@ -113,7 +120,7 @@ class _WalletScreenState extends State<WalletScreen> {
                 children: [
                   _BalanceCard(
                     wallet: success.wallet,
-                    onTopUp: _showTopUpNotice,
+                    onTopUp: widget.allowTopUp ? _showTopUpNotice : null,
                   ),
                   const SizedBox(height: 24),
                   const Text(
@@ -161,7 +168,7 @@ class _WalletScreenState extends State<WalletScreen> {
 
 class _BalanceCard extends StatelessWidget {
   final WalletModel wallet;
-  final VoidCallback onTopUp;
+  final VoidCallback? onTopUp;
 
   const _BalanceCard({required this.wallet, required this.onTopUp});
 
@@ -219,23 +226,25 @@ class _BalanceCard extends StatelessWidget {
               fontWeight: FontWeight.w900,
             ),
           ),
-          const SizedBox(height: 18),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: onTopUp,
-              icon: const Icon(Icons.add_circle_outline_rounded, size: 18),
-              label: const Text('شحن المحفظة'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.white,
-                side: BorderSide(color: Colors.white.withAlpha(140)),
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(50),
+          if (onTopUp != null) ...[
+            const SizedBox(height: 18),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: onTopUp,
+                icon: const Icon(Icons.add_circle_outline_rounded, size: 18),
+                label: const Text('شحن المحفظة'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  side: BorderSide(color: Colors.white.withAlpha(140)),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(50),
+                  ),
                 ),
               ),
             ),
-          ),
+          ],
         ],
       ),
     );

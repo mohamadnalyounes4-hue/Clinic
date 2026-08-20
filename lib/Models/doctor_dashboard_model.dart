@@ -299,9 +299,15 @@ class DoctorMedicalRecord {
   final String patientName;
   final String diagnosis;
   final String notes;
+  final String diseases;
+  final String bloodType;
+  final int? heartRate;
+  final String allergies;
   final String date;
+  final bool referredToPharmacist;
   final bool referredToLaboratory;
   final String laboratoryNotes;
+  final String laboratoryStatus;
 
   const DoctorMedicalRecord({
     required this.id,
@@ -310,10 +316,44 @@ class DoctorMedicalRecord {
     required this.patientName,
     required this.diagnosis,
     required this.notes,
+    required this.diseases,
+    required this.bloodType,
+    this.heartRate,
+    required this.allergies,
     required this.date,
+    required this.referredToPharmacist,
     required this.referredToLaboratory,
     required this.laboratoryNotes,
+    required this.laboratoryStatus,
   });
+
+  DoctorMedicalRecord copyWith({
+    String? diagnosis,
+    String? notes,
+    String? diseases,
+    String? bloodType,
+    int? heartRate,
+    String? allergies,
+    bool? referredToPharmacist,
+    bool? referredToLaboratory,
+    String? laboratoryNotes,
+  }) => DoctorMedicalRecord(
+    id: id,
+    appointmentId: appointmentId,
+    patientId: patientId,
+    patientName: patientName,
+    diagnosis: diagnosis ?? this.diagnosis,
+    notes: notes ?? this.notes,
+    diseases: diseases ?? this.diseases,
+    bloodType: bloodType ?? this.bloodType,
+    heartRate: heartRate ?? this.heartRate,
+    allergies: allergies ?? this.allergies,
+    date: date,
+    referredToPharmacist: referredToPharmacist ?? this.referredToPharmacist,
+    referredToLaboratory: referredToLaboratory ?? this.referredToLaboratory,
+    laboratoryNotes: laboratoryNotes ?? this.laboratoryNotes,
+    laboratoryStatus: laboratoryStatus,
+  );
 
   factory DoctorMedicalRecord.fromJson(Map<String, dynamic> json) {
     final appointment =
@@ -329,7 +369,7 @@ class DoctorMedicalRecord {
             .trim();
 
     return DoctorMedicalRecord(
-      id: _toInt(json['id']),
+      id: _toInt(json['record_id'] ?? json['id']),
       appointmentId: _toInt(json['appointment_id'] ?? appointment['id']),
       patientId: _toInt(patient['id'] ?? json['patient_id']),
       patientName: _firstNonEmpty([
@@ -339,15 +379,23 @@ class DoctorMedicalRecord {
       ], fallback: 'مريض'),
       diagnosis: _firstNonEmpty([json['diagnosis']], fallback: 'غير محدد'),
       notes: _firstNonEmpty([json['notes']]),
+      diseases: _firstNonEmpty([json['diseases']]),
+      bloodType: _firstNonEmpty([json['blood_type']]),
+      heartRate: json['heart_rate'] == null ? null : _toInt(json['heart_rate']),
+      allergies: _firstNonEmpty([json['allergies']]),
       date: _firstNonEmpty([
         json['created_at'],
         appointment['appointment_date'],
       ]),
+      referredToPharmacist:
+          json['refer_to_pharmacist'] == true ||
+          json['refer_to_pharmacist'] == 1,
       referredToLaboratory:
           json['refer_to_laboratory'] == true ||
           json['refer_to_laboratory'] == 1 ||
           json['laboratory_status'] != null,
       laboratoryNotes: _firstNonEmpty([json['laboratory_notes']]),
+      laboratoryStatus: _firstNonEmpty([json['laboratory_status']]),
     );
   }
 }
@@ -419,21 +467,27 @@ class VisitMedicineInput {
 
 class DoctorPrescription {
   final int id;
+  final int medicalRecordId;
   final String patientName;
   final String instructions;
   final String notes;
   final String status;
   final int itemsCount;
   final String date;
+  final String expiresAt;
+  final List<VisitMedicineInput> items;
 
   const DoctorPrescription({
     required this.id,
+    required this.medicalRecordId,
     required this.patientName,
     required this.instructions,
     required this.notes,
     required this.status,
     required this.itemsCount,
     required this.date,
+    required this.expiresAt,
+    required this.items,
   });
 
   factory DoctorPrescription.fromJson(Map<String, dynamic> json) {
@@ -452,6 +506,7 @@ class DoctorPrescription {
 
     return DoctorPrescription(
       id: _toInt(json['id']),
+      medicalRecordId: _toInt(json['medical_record_id']),
       patientName: _firstNonEmpty([
         json['patient_name'],
         patient['name'],
@@ -460,8 +515,22 @@ class DoctorPrescription {
       instructions: _firstNonEmpty([json['instructions']]),
       notes: _firstNonEmpty([json['notes']]),
       status: _firstNonEmpty([json['status']], fallback: 'active'),
-      itemsCount: items.length,
-      date: _firstNonEmpty([json['created_at']]),
+      itemsCount: _toInt(json['items_count']) > 0
+          ? _toInt(json['items_count'])
+          : items.length,
+      date: _firstNonEmpty([json['issued_at'], json['created_at']]),
+      expiresAt: _firstNonEmpty([json['expires_at']]),
+      items: items.whereType<Map>().map((item) {
+        final data = item.cast<String, dynamic>();
+        return VisitMedicineInput(
+          medicineId: _toInt(data['medicine_id']),
+          name: _firstNonEmpty([data['medicine_name'], data['name']]),
+          dosage: _firstNonEmpty([data['dosage']]),
+          frequency: _firstNonEmpty([data['frequency']]),
+          duration: _firstNonEmpty([data['duration']]),
+          notes: _firstNonEmpty([data['notes']]),
+        );
+      }).toList(),
     );
   }
 }

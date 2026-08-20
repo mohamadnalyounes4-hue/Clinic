@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:nabad/Cubits/cubits/user_cubit.dart';
 import 'package:nabad/Cubits/states/user_state.dart';
+import 'package:nabad/core/router/app_router.dart';
 import 'package:nabad/core/theme/nabad_colors.dart';
-import 'package:nabad/screens/HomePage_doctor/homepage_d.dart';
 import 'package:nabad/widgets/patient_login/country_code.dart';
 import 'package:nabad/widgets/patient_login/patient_login_card.dart';
 import 'package:nabad/widgets/soft_ring.dart';
@@ -60,9 +60,10 @@ class _DoctorLoginScreenState extends State<DoctorLoginScreen> {
     return BlocListener<UserCubit, UserState>(
       listener: (context, state) {
         if (state is LoginSuccessDoctor) {
-          Navigator.pushReplacement(
+          Navigator.pushNamedAndRemoveUntil(
             context,
-            MaterialPageRoute(builder: (_) => const DoctorHomePage()),
+            AppRoutes.doctorHome,
+            (_) => false,
           );
         }
         if (state is LoginSuccessPatient) {

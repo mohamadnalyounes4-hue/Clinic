@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:nabad/Cubits/cubits/appointment_cubit.dart';
@@ -6,7 +8,7 @@ import 'package:nabad/Cubits/cubits/wallet_cubit.dart';
 import '../../Cubits/states/points_state.dart';
 import '../../Cubits/states/wallet_state.dart';
 import '../../Models/doctor_model.dart';
-import '../../Models/doctor_schedule_model.dart';
+import '../../Models/doctor_availability_model.dart';
 import '../../Models/points_model.dart';
 import '../../core/Error/exceptions.dart';
 import '../../core/theme/nabd_colors.dart';
@@ -28,10 +30,14 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
   bool _isBooking = false;
   bool _isScheduleLoading = true;
   String? _scheduleError;
-  List<DoctorScheduleModel> _doctorSchedule = const [];
+  List<DoctorAvailabilitySlotModel> _availabilitySlots = const [];
 
   // ── النقاط المستخدمة كخصم ──
   int _pointsToRedeem = 0;
+  PointsRedemptionPreviewModel? _serverPreview;
+  bool _isPreviewLoading = false;
+  String? _previewError;
+  Timer? _previewDebounce;
 
   @override
   void initState() {
@@ -41,28 +47,82 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
     _loadDoctorSchedule();
   }
 
+  @override
+  void dispose() {
+    _previewDebounce?.cancel();
+    super.dispose();
+  }
+
   Future<void> _loadDoctorSchedule() async {
     try {
-      final schedule = await context.read<AppointmentCubit>().getDoctorSchedule(
-        widget.doctor.id,
+      final dates = await context
+          .read<AppointmentCubit>()
+          .getDoctorAvailableDates(
+            doctorId: widget.doctor.id,
+            from: _days.first['date'] as DateTime,
+            to: _days.last['date'] as DateTime,
+          );
+      final byDate = {for (final item in dates) _dateKey(item.date): item};
+      for (final day in _days) {
+        final availability = byDate[_dateKey(day['date'] as DateTime)];
+        day['isAvailable'] = availability?.isAvailable ?? false;
+        day['availableSlots'] = availability?.availableSlots ?? 0;
+      }
+      final firstAvailable = _days.indexWhere(
+        (day) => day['isAvailable'] == true,
       );
       if (!mounted) return;
       setState(() {
-        _doctorSchedule = schedule;
+        _selectedDayIndex = firstAvailable < 0 ? 0 : firstAvailable;
         _scheduleError = null;
-        _isScheduleLoading = false;
-        _syncTimeSelection();
       });
+      await _loadAvailabilityForSelectedDate();
     } catch (_) {
       if (!mounted) return;
       setState(() {
-        _doctorSchedule = const [];
+        _availabilitySlots = const [];
         _scheduleError = 'تعذر جلب فترات دوام الطبيب';
         _isScheduleLoading = false;
         _selectedTime = '';
       });
     }
   }
+
+  Future<void> _loadAvailabilityForSelectedDate() async {
+    setState(() {
+      _isScheduleLoading = true;
+      _selectedTime = '';
+      _scheduleError = null;
+    });
+    try {
+      final availability = await context
+          .read<AppointmentCubit>()
+          .getDoctorAvailability(
+            doctorId: widget.doctor.id,
+            date: _selectedDate,
+          );
+      if (!mounted) return;
+      setState(() {
+        _availabilitySlots = availability.slots
+            .where((slot) => slot.available)
+            .toList();
+        _isScheduleLoading = false;
+        _syncTimeSelection();
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _availabilitySlots = const [];
+        _isScheduleLoading = false;
+        _scheduleError = 'تعذر جلب الأوقات المتاحة لهذا اليوم';
+      });
+    }
+  }
+
+  String _dateKey(DateTime date) =>
+      '${date.year.toString().padLeft(4, '0')}-'
+      '${date.month.toString().padLeft(2, '0')}-'
+      '${date.day.toString().padLeft(2, '0')}';
 
   bool _isTimeInPast(DateTime day, String time) {
     final now = DateTime.now();
@@ -111,12 +171,14 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
   // بنعرض أقرب 6 أيام حقيقية من تاريخ اليوم. اختيار الوقت حر بالكامل
   // (مفيش ربط بدوام الطبيب حاليًا)، والباك هو اللي يرفض أي تعارض فعلي
   // وقت تأكيد الحجز.
-  late final List<Map<String, dynamic>> _days = List.generate(6, (i) {
+  late final List<Map<String, dynamic>> _days = List.generate(14, (i) {
     final date = DateTime.now().add(Duration(days: i));
     return {
       'name': _weekdayName(date.weekday),
       'num': date.day.toString().padLeft(2, '0'),
       'date': date,
+      'isAvailable': false,
+      'availableSlots': 0,
     };
   });
 
@@ -151,19 +213,6 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
     return names[month] ?? '';
   }
 
-  String _englishWeekday(int weekday) {
-    const names = {
-      1: 'Monday',
-      2: 'Tuesday',
-      3: 'Wednesday',
-      4: 'Thursday',
-      5: 'Friday',
-      6: 'Saturday',
-      7: 'Sunday',
-    };
-    return names[weekday] ?? '';
-  }
-
   int? _timeToMinutes(String value) {
     final parts = value.split(':');
     if (parts.length < 2) return null;
@@ -173,37 +222,14 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
     return hour * 60 + minute;
   }
 
-  String _minutesToTime(int value) {
-    final hour = (value ~/ 60).toString().padLeft(2, '0');
-    final minute = (value % 60).toString().padLeft(2, '0');
-    return '$hour:$minute';
-  }
-
   List<Map<String, dynamic>> get _daySlots {
-    final duration = widget.doctor.consultationDuration;
-    if (duration == null || duration <= 0) return const [];
-
-    final selectedWeekday = _englishWeekday(_selectedDate.weekday);
-    final times = <String>{};
-
-    for (final schedule in _doctorSchedule.where(
-      (item) => item.day.toLowerCase() == selectedWeekday.toLowerCase(),
-    )) {
-      final start = _timeToMinutes(schedule.startTime);
-      final end = _timeToMinutes(schedule.endTime);
-      if (start == null || end == null || end <= start) continue;
-
-      for (var time = start; time + duration <= end; time += duration) {
-        times.add(_minutesToTime(time));
-      }
-    }
-
-    final sortedTimes = times.toList()..sort();
-    return sortedTimes
+    return _availabilitySlots
         .map(
-          (time) => <String, dynamic>{
-            'time': time,
-            'label': (_timeToMinutes(time) ?? 0) < 12 * 60 ? 'صباحاً' : 'مساءً',
+          (slot) => <String, dynamic>{
+            'time': slot.time,
+            'label': (_timeToMinutes(slot.time) ?? 0) < 12 * 60
+                ? 'صباحاً'
+                : 'مساءً',
           },
         )
         .toList();
@@ -276,11 +302,71 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
   }
 
   double get _discountPercent =>
-      _pointsSummary?.discountPercentFor(_pointsToRedeem) ?? 0;
+      _serverPreview?.discountPercentage ??
+      (_pointsSummary?.discountPercentFor(_pointsToRedeem) ?? 0);
 
-  double get _discountAmount => _consultationFee * _discountPercent / 100;
+  double get _discountAmount =>
+      _serverPreview?.discountAmount ??
+      (_consultationFee * _discountPercent / 100);
 
-  double get _finalPrice => _consultationFee - _discountAmount;
+  double get _finalPrice =>
+      _serverPreview?.finalPrice ?? (_consultationFee - _discountAmount);
+
+  bool get _isPreviewValid =>
+      _pointsToRedeem == 0 ||
+      (!_isPreviewLoading &&
+          _previewError == null &&
+          _serverPreview?.pointsRedeemed == _pointsToRedeem);
+
+  void _changePoints(int value) {
+    _previewDebounce?.cancel();
+    setState(() {
+      _pointsToRedeem = value;
+      _serverPreview = null;
+      _previewError = null;
+      _isPreviewLoading = value > 0;
+    });
+    if (value <= 0) return;
+    _previewDebounce = Timer(
+      const Duration(milliseconds: 350),
+      () => _loadPointsPreview(value),
+    );
+  }
+
+  Future<void> _loadPointsPreview(int requestedPoints) async {
+    if (!mounted || requestedPoints != _pointsToRedeem) return;
+    setState(() {
+      _isPreviewLoading = true;
+      _previewError = null;
+      _serverPreview = null;
+    });
+    try {
+      final preview = await context.read<PointsCubit>().previewRedemption(
+        doctorId: widget.doctor.id,
+        pointsToRedeem: requestedPoints,
+      );
+      if (!mounted || requestedPoints != _pointsToRedeem) return;
+      setState(() {
+        _serverPreview = preview;
+        _isPreviewLoading = false;
+        _previewError = null;
+      });
+    } on ServerExceptions catch (error) {
+      if (!mounted || requestedPoints != _pointsToRedeem) return;
+      setState(() {
+        _serverPreview = null;
+        _isPreviewLoading = false;
+        _previewError = error.errModel.errorMessage;
+      });
+    } catch (_) {
+      if (!mounted || requestedPoints != _pointsToRedeem) return;
+      setState(() {
+        _serverPreview = null;
+        _isPreviewLoading = false;
+        _previewError = 'تعذر التحقق من قيمة الخصم';
+      });
+    }
+  }
 
   double? get _walletBalance {
     final state = context.read<WalletCubit>().state;
@@ -352,11 +438,12 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                       IconButton(
                         onPressed: _pointsToRedeem >= maxUsable
                             ? null
-                            : () => setState(() {
-                                _pointsToRedeem =
-                                    (_pointsToRedeem + summary.pointsPerUnit)
-                                        .clamp(0, maxUsable);
-                              }),
+                            : () => _changePoints(
+                                (_pointsToRedeem + summary.pointsPerUnit).clamp(
+                                  0,
+                                  maxUsable,
+                                ),
+                              ),
                         icon: const Icon(Icons.add_circle_outline_rounded),
                         color: NabadColors.primary,
                         visualDensity: VisualDensity.compact,
@@ -376,11 +463,12 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                       IconButton(
                         onPressed: _pointsToRedeem <= 0
                             ? null
-                            : () => setState(() {
-                                _pointsToRedeem =
-                                    (_pointsToRedeem - summary.pointsPerUnit)
-                                        .clamp(0, maxUsable);
-                              }),
+                            : () => _changePoints(
+                                (_pointsToRedeem - summary.pointsPerUnit).clamp(
+                                  0,
+                                  maxUsable,
+                                ),
+                              ),
                         icon: const Icon(Icons.remove_circle_outline_rounded),
                         color: NabadColors.mutedText,
                         visualDensity: VisualDensity.compact,
@@ -411,27 +499,80 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                 const SizedBox(height: 10),
                 const Divider(color: NabadColors.divider, height: 1),
                 const SizedBox(height: 10),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      '- ${_discountAmount.toStringAsFixed(0)} ر.س',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.green.shade700,
+                if (_isPreviewLoading)
+                  const Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      SizedBox(
+                        width: 15,
+                        height: 15,
+                        child: CircularProgressIndicator(strokeWidth: 2),
                       ),
-                    ),
-                    Text(
-                      'خصم ${_discountPercent.toStringAsFixed(0)}%',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.green.shade700,
+                      SizedBox(width: 8),
+                      Text(
+                        'جاري التحقق من الخصم...',
+                        style: TextStyle(
+                          color: NabadColors.mutedText,
+                          fontSize: 12,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
+                    ],
+                  )
+                else if (_previewError != null)
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          _previewError!,
+                          textAlign: TextAlign.right,
+                          style: TextStyle(
+                            color: Colors.red.shade700,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'إعادة المحاولة',
+                        onPressed: () => _loadPointsPreview(_pointsToRedeem),
+                        icon: const Icon(Icons.refresh_rounded),
+                        color: NabadColors.primary,
+                        visualDensity: VisualDensity.compact,
+                      ),
+                    ],
+                  )
+                else
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        '- ${_discountAmount.toStringAsFixed(0)} ر.س',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.green.shade700,
+                        ),
+                      ),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.verified_rounded,
+                            color: Colors.green.shade700,
+                            size: 15,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'خصم ${_discountPercent.toStringAsFixed(0)}%',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.green.shade700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
               ],
             ],
           ),
@@ -674,68 +815,73 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
         // أيام الأسبوع
         LayoutBuilder(
           builder: (context, constraints) {
-            final responsiveWidth = constraints.maxWidth / _days.length;
-            final dayCardWidth = responsiveWidth > 60 ? 60.0 : responsiveWidth;
-
-            return Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: List.generate(_days.length, (index) {
-                // عكس الترتيب لـ RTL
-                final i = _days.length - 1 - index;
-                final isSelected = _selectedDayIndex == i;
-                return GestureDetector(
-                  onTap: () => setState(() {
-                    _selectedDayIndex = i;
-                    _syncTimeSelection();
-                  }),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    width: dayCardWidth,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? NabadColors.primary
-                          : NabadColors.white,
-                      borderRadius: BorderRadius.circular(50),
-                      boxShadow: isSelected
-                          ? []
-                          : [
-                              BoxShadow(
-                                color: NabadColors.primary.withOpacity(0.06),
-                                blurRadius: 8,
-                              ),
-                            ],
-                    ),
-                    child: Column(
-                      children: [
-                        Text(
-                          _days[i]['name'] as String,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: isSelected
-                                ? NabadColors.white
-                                : NabadColors.mutedText,
+            return SizedBox(
+              height: 82,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: _days.length,
+                separatorBuilder: (_, _) => const SizedBox(width: 8),
+                itemBuilder: (context, index) {
+                  // عكس الترتيب لـ RTL
+                  final i = _days.length - 1 - index;
+                  final isSelected = _selectedDayIndex == i;
+                  final isAvailable = _days[i]['isAvailable'] == true;
+                  return GestureDetector(
+                    onTap: !isAvailable || _isScheduleLoading
+                        ? null
+                        : () {
+                            setState(() => _selectedDayIndex = i);
+                            _loadAvailabilityForSelectedDate();
+                          },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      width: 58,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        color: isSelected && isAvailable
+                            ? NabadColors.primary
+                            : NabadColors.white,
+                        borderRadius: BorderRadius.circular(50),
+                        boxShadow: isSelected
+                            ? []
+                            : [
+                                BoxShadow(
+                                  color: NabadColors.primary.withOpacity(0.06),
+                                  blurRadius: 8,
+                                ),
+                              ],
+                      ),
+                      child: Column(
+                        children: [
+                          Text(
+                            _days[i]['name'] as String,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: isSelected && isAvailable
+                                  ? NabadColors.white
+                                  : NabadColors.mutedText,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          _days[i]['num'] as String,
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w800,
-                            color: isSelected
-                                ? NabadColors.white
-                                : NabadColors.darkText,
+                          const SizedBox(height: 6),
+                          Text(
+                            _days[i]['num'] as String,
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                              color: isSelected && isAvailable
+                                  ? NabadColors.white
+                                  : NabadColors.darkText,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                );
-              }),
+                  );
+                },
+              ),
             );
           },
         ),
@@ -1107,7 +1253,8 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                       (_isBooking ||
                           !_hasSelectedTime ||
                           _isSelectedTimeInPast ||
-                          insufficientBalance)
+                          insufficientBalance ||
+                          !_isPreviewValid)
                       ? null
                       : () => _confirmBooking(),
                   icon: _isBooking
@@ -1123,6 +1270,10 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                   label: Text(
                     _isBooking
                         ? 'جاري الحجز...'
+                        : _isPreviewLoading
+                        ? 'جاري التحقق من الخصم...'
+                        : _previewError != null
+                        ? 'تحقق من خصم النقاط'
                         : !_hasSelectedTime
                         ? 'لا توجد فترات متاحة'
                         : _isSelectedTimeInPast
@@ -1154,11 +1305,25 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
   }
 
   Future<void> _confirmBooking() async {
-    if (!_hasSelectedTime || _isSelectedTimeInPast || _hasInsufficientBalance) {
+    if (!_hasSelectedTime ||
+        _isSelectedTimeInPast ||
+        _hasInsufficientBalance ||
+        !_isPreviewValid) {
       return;
     }
     setState(() => _isBooking = true);
     try {
+      if (_pointsToRedeem > 0) {
+        final preview = await context.read<PointsCubit>().previewRedemption(
+          doctorId: widget.doctor.id,
+          pointsToRedeem: _pointsToRedeem,
+        );
+        if (preview.pointsRedeemed != _pointsToRedeem) {
+          throw StateError('The server changed the redeemed points amount');
+        }
+        if (!mounted) return;
+        setState(() => _serverPreview = preview);
+      }
       await context.read<AppointmentCubit>().bookAppointment(
         doctorId: widget.doctor.id,
         date: _selectedDate,
@@ -1166,12 +1331,10 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
         pointsToRedeem: _pointsToRedeem,
       );
       if (!mounted) return;
-      if (_pointsToRedeem > 0) {
-        context.read<PointsCubit>().getPointsSummary();
-      }
       _showSuccessDialog();
     } on ServerExceptions catch (e) {
       if (!mounted) return;
+      _loadAvailabilityForSelectedDate();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(e.errModel.errorMessage),
@@ -1222,7 +1385,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
               ),
               const SizedBox(height: 16),
               const Text(
-                'تم الحجز بنجاح!',
+                'تم إرسال طلب الحجز',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
@@ -1231,7 +1394,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                'موعدك مع د. ${widget.doctor.fullName}\n$_selectedDayNum $monthLabel الساعة $_selectedTime $period',
+                'طلبك مع د. ${widget.doctor.fullName}\n$_selectedDayNum $monthLabel الساعة $_selectedTime $period\nبانتظار موافقة السكرتاريا',
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   fontSize: 13,
@@ -1242,7 +1405,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
               if (_pointsToRedeem > 0) ...[
                 const SizedBox(height: 8),
                 Text(
-                  'تم استخدام $_pointsToRedeem نقطة (خصم ${_discountAmount.toStringAsFixed(0)} ر.س)',
+                  'سيتم استخدام $_pointsToRedeem نقطة بعد الموافقة (خصم ${_discountAmount.toStringAsFixed(0)} ر.س)',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 12,

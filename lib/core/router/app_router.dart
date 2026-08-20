@@ -15,6 +15,10 @@ import 'package:nabad/Models/doctor_model.dart';
 import 'package:nabad/screens/HomePage_patient/appointments_screen.dart';
 import 'package:nabad/screens/HomePage_patient/booking_detail_screen.dart';
 import 'package:nabad/screens/HomePage_patient/wallet_screen.dart';
+import 'package:nabad/screens/HomePage_patient/points_history_screen.dart';
+import 'package:nabad/screens/HomePage_patient/patient_notifications_screen.dart';
+import 'package:nabad/screens/HomePage_patient/medicine_reminders_screen.dart';
+import 'package:nabad/screens/HomePage_patient/patient_settings_screen.dart';
 
 class AppRoutes {
   static const String welcome = '/';
@@ -34,6 +38,10 @@ class AppRoutes {
   static const String bookingDetail = '/booking_detail';
   static const String doctorProfileBooking = '/doctor_profile_booking';
   static const String wallet = '/wallet';
+  static const String pointsHistory = '/points_history';
+  static const String patientNotifications = '/patient_notifications';
+  static const String medicineReminders = '/medicine_reminders';
+  static const String patientSettings = '/patient_settings';
 }
 
 class AppRouter {
@@ -69,6 +77,18 @@ class AppRouter {
         return MaterialPageRoute(builder: (_) => const AppointmentsScreen());
       case AppRoutes.wallet:
         return MaterialPageRoute(builder: (_) => const WalletScreen());
+      case AppRoutes.pointsHistory:
+        return MaterialPageRoute(builder: (_) => const PointsHistoryScreen());
+      case AppRoutes.patientNotifications:
+        return MaterialPageRoute(
+          builder: (_) => const PatientNotificationsScreen(),
+        );
+      case AppRoutes.medicineReminders:
+        return MaterialPageRoute(
+          builder: (_) => const MedicineRemindersScreen(),
+        );
+      case AppRoutes.patientSettings:
+        return MaterialPageRoute(builder: (_) => const PatientSettingsScreen());
       case AppRoutes.bookingDetail:
         final doctor = settings.arguments;
         if (doctor is DoctorModel) {

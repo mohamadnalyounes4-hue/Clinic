@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -5,11 +7,14 @@ import 'package:nabad/Cubits/states/clinic_states.dart';
 import 'package:nabad/Cubits/cubits/department_cubit.dart';
 import 'package:nabad/Cubits/cubits/doctor_cubit.dart';
 import 'package:nabad/Cubits/cubits/points_cubit.dart';
+import 'package:nabad/Cubits/cubits/patient_notification_cubit.dart';
 import 'package:nabad/Cubits/states/points_state.dart';
+import 'package:nabad/Cubits/states/patient_notification_state.dart';
 import 'package:nabad/Cubits/cubits/user_cubit.dart';
 import 'package:nabad/Cubits/states/user_state.dart';
 import 'package:nabad/Models/department_model.dart';
 import 'package:nabad/Models/doctor_model.dart';
+import 'package:nabad/core/router/app_router.dart';
 import 'package:nabad/core/theme/nabad_colors.dart';
 import 'package:nabad/screens/HomePage_patient/patient_profile_screen.dart';
 import 'package:nabad/screens/HomePage_patient/doctor/doctor_profile_booking_screen.dart';
@@ -24,9 +29,11 @@ class PatientHomePage extends StatefulWidget {
   State<PatientHomePage> createState() => _PatientHomePageState();
 }
 
-class _PatientHomePageState extends State<PatientHomePage> {
+class _PatientHomePageState extends State<PatientHomePage>
+    with WidgetsBindingObserver {
   int _selectedIndex = 0;
   final ScrollController _scrollController = ScrollController();
+  Timer? _pointsRefreshTimer;
 
   final List<_HealthTip> _tips = const [
     _HealthTip(
@@ -49,14 +56,30 @@ class _PatientHomePageState extends State<PatientHomePage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     context.read<UserCubit>().getPatientProfile();
     context.read<DepartmentCubit>().getDepartments();
     context.read<DoctorCubit>().getAllDoctors();
     context.read<PointsCubit>().getPointsSummary();
+    context.read<PatientNotificationCubit>().loadUnreadCount();
+    _pointsRefreshTimer = Timer.periodic(const Duration(seconds: 20), (_) {
+      if (mounted && _selectedIndex == 0) {
+        context.read<PointsCubit>().getPointsSummary();
+      }
+    });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && _selectedIndex == 0) {
+      context.read<PointsCubit>().getPointsSummary();
+    }
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _pointsRefreshTimer?.cancel();
     _scrollController.dispose();
     super.dispose();
   }
@@ -237,7 +260,7 @@ class _PatientHomePageState extends State<PatientHomePage> {
       child: Directionality(
         textDirection: TextDirection.rtl,
         child: Scaffold(
-          backgroundColor: NabadColors.background,
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
           body: SafeArea(
             child: Stack(
               children: [
@@ -271,6 +294,7 @@ class _PatientHomePageState extends State<PatientHomePage> {
               setState(() => _selectedIndex = index);
               if (index == 0) {
                 context.read<DoctorCubit>().getAllDoctors();
+                context.read<PointsCubit>().getPointsSummary();
               }
               if (index == 3) {
                 context.read<UserCubit>().getPatientProfile();
@@ -325,17 +349,59 @@ class _PatientHeader extends StatelessWidget {
               ),
             ),
             const Spacer(),
-            IconButton.filled(
-              onPressed: () {},
-              style: IconButton.styleFrom(
-                backgroundColor: Colors.white,
-                foregroundColor: NabadColors.primary,
-                fixedSize: const Size(46, 46),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(17),
-                ),
-              ),
-              icon: const Icon(Icons.notifications_none_rounded),
+            BlocBuilder<PatientNotificationCubit, PatientNotificationState>(
+              buildWhen: (previous, current) =>
+                  previous.unreadCount != current.unreadCount,
+              builder: (context, notificationState) {
+                return Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    IconButton.filled(
+                      onPressed: () => Navigator.pushNamed(
+                        context,
+                        AppRoutes.patientNotifications,
+                      ),
+                      style: IconButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: NabadColors.primary,
+                        fixedSize: const Size(46, 46),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(17),
+                        ),
+                      ),
+                      icon: const Icon(Icons.notifications_none_rounded),
+                    ),
+                    if (notificationState.unreadCount > 0)
+                      Positioned(
+                        top: -4,
+                        left: -4,
+                        child: Container(
+                          constraints: const BoxConstraints(
+                            minWidth: 19,
+                            minHeight: 19,
+                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 5),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE45B5B),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: Colors.white, width: 2),
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            notificationState.unreadCount > 99
+                                ? '99+'
+                                : '${notificationState.unreadCount}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+              },
             ),
           ],
         );
@@ -357,65 +423,198 @@ class _PointsBalanceCard extends StatelessWidget {
         }
 
         final summary = state.summary;
-        return Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: NabadColors.primary,
-            borderRadius: BorderRadius.circular(22),
-            boxShadow: [
-              BoxShadow(
-                color: NabadColors.primary.withAlpha(40),
-                blurRadius: 20,
-                offset: const Offset(0, 10),
+        final unit = summary.pointsPerUnit;
+        final remainder = unit > 0 ? summary.pointsBalance % unit : 0;
+        final progress = unit > 0 ? remainder / unit : 0.0;
+        final pointsLeft = unit > 0 ? unit - remainder : 0;
+        final hasReadyDiscount =
+            unit > 0 && summary.pointsBalance >= summary.pointsPerUnit;
+        return InkWell(
+          onTap: () async {
+            await Navigator.pushNamed(context, AppRoutes.pointsHistory);
+            if (context.mounted) {
+              context.read<PointsCubit>().getPointsSummary();
+            }
+          },
+          borderRadius: BorderRadius.circular(26),
+          child: Container(
+            clipBehavior: Clip.antiAlias,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                begin: Alignment.topRight,
+                end: Alignment.bottomLeft,
+                colors: [Color(0xFF35AFC5), NabadColors.primary],
               ),
-            ],
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: Colors.white.withAlpha(35),
-                  borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(26),
+              boxShadow: [
+                BoxShadow(
+                  color: NabadColors.primary.withAlpha(45),
+                  blurRadius: 24,
+                  offset: const Offset(0, 12),
                 ),
-                child: const Icon(
-                  Icons.stars_rounded,
-                  color: Colors.white,
-                  size: 26,
+              ],
+            ),
+            child: Stack(
+              children: [
+                Positioned(
+                  left: -18,
+                  top: -30,
+                  child: Icon(
+                    Icons.stars_rounded,
+                    size: 100,
+                    color: Colors.white.withAlpha(18),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '${summary.pointsBalance} نقطة',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w900,
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 15,
+                    vertical: 13,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            width: 38,
+                            height: 38,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withAlpha(28),
+                              borderRadius: BorderRadius.circular(13),
+                              border: Border.all(
+                                color: Colors.white.withAlpha(35),
+                              ),
+                            ),
+                            child: const Icon(
+                              Icons.stars_rounded,
+                              color: NabadColors.starColor,
+                              size: 22,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          const Expanded(
+                            child: Text(
+                              'رصيد نقاطك',
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 5,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withAlpha(24),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  'التفاصيل',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                                SizedBox(width: 4),
+                                Icon(
+                                  Icons.arrow_back_ios_new_rounded,
+                                  color: Colors.white,
+                                  size: 11,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'استخدمها كخصم بحجزك القادم',
-                      style: TextStyle(
-                        color: Colors.white.withAlpha(215),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
+                      const SizedBox(height: 8),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 350),
+                            child: Text(
+                              '${summary.pointsBalance}',
+                              key: ValueKey(summary.pointsBalance),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 25,
+                                height: 1,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ),
+                          const Padding(
+                            padding: EdgeInsets.only(right: 5, bottom: 2),
+                            child: Text(
+                              'نقطة',
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                          if (state.pointsChange != 0) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 7,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                color: state.pointsChange > 0
+                                    ? const Color(0xFFDCFCE7).withAlpha(235)
+                                    : const Color(0xFFFFE4E6).withAlpha(235),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Text(
+                                '${state.pointsChange > 0 ? '+' : ''}${state.pointsChange}',
+                                style: TextStyle(
+                                  color: state.pointsChange > 0
+                                      ? const Color(0xFF15803D)
+                                      : const Color(0xFFBE123C),
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 9),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(20),
+                        child: LinearProgressIndicator(
+                          value: hasReadyDiscount ? 1 : progress,
+                          minHeight: 5,
+                          backgroundColor: Colors.white.withAlpha(28),
+                          valueColor: const AlwaysStoppedAnimation(
+                            NabadColors.starColor,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        hasReadyDiscount
+                            ? 'لديك خصم جاهز للاستخدام في حجزك القادم'
+                            : 'باقي $pointsLeft نقطة لتحصل على خصم ${summary.discountPerUnit.toStringAsFixed(0)}%',
+                        style: TextStyle(
+                          color: Colors.white.withAlpha(215),
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              Icon(
-                Icons.arrow_back_ios_new_rounded,
-                color: Colors.white.withAlpha(180),
-                size: 16,
-              ),
-            ],
+              ],
+            ),
           ),
         );
       },
@@ -455,7 +654,9 @@ class _DepartmentGrid extends StatelessWidget {
                   width: 62,
                   height: 62,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFC9F3F8),
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Theme.of(context).colorScheme.surface
+                        : const Color(0xFFC9F3F8),
                     borderRadius: BorderRadius.circular(24),
                   ),
                   child: Icon(
@@ -472,8 +673,8 @@ class _DepartmentGrid extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: NabadColors.deepTeal,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurface,
                       fontSize: 11.5,
                       fontWeight: FontWeight.w900,
                     ),
@@ -512,7 +713,7 @@ class _DoctorCard extends StatelessWidget {
         child: Ink(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: Colors.white.withAlpha(238),
+            color: Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.circular(26),
             border: Border.all(color: NabadColors.primary.withAlpha(14)),
             boxShadow: [
@@ -559,8 +760,8 @@ class _DoctorCard extends StatelessWidget {
                       'Dr. ${doctor.fullName}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: NabadColors.darkText,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurface,
                         fontSize: 16,
                         fontWeight: FontWeight.w900,
                       ),
@@ -714,7 +915,7 @@ class _SearchBox extends StatelessWidget {
       height: 58,
       padding: const EdgeInsets.symmetric(horizontal: 18),
       decoration: BoxDecoration(
-        color: Colors.white.withAlpha(238),
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: NabadColors.primary.withAlpha(14)),
       ),
@@ -848,8 +1049,8 @@ class _SectionHeader extends StatelessWidget {
         Expanded(
           child: Text(
             title,
-            style: const TextStyle(
-              color: NabadColors.darkText,
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurface,
               fontSize: 18,
               fontWeight: FontWeight.w900,
             ),
@@ -1025,7 +1226,7 @@ class _PatientBottomBar extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         boxShadow: [
           BoxShadow(
             color: NabadColors.primary.withAlpha(18),

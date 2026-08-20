@@ -7,6 +7,7 @@ class AppointmentModel {
   final double price;
   final double? discountAmount;
   final int? pointsRedeemed;
+  final int requestedPointsToRedeem;
   final double finalPrice;
   final int? pointsAwarded;
   final String? paymentStatus;
@@ -15,6 +16,8 @@ class AppointmentModel {
   final int? rating;
   final DateTime? ratedAt;
   final bool canRate;
+  final DateTime? reviewedAt;
+  final String? rejectionReason;
   final AppointmentDoctorModel doctor;
 
   AppointmentModel({
@@ -26,6 +29,7 @@ class AppointmentModel {
     required this.price,
     this.discountAmount,
     this.pointsRedeemed,
+    this.requestedPointsToRedeem = 0,
     required this.finalPrice,
     this.pointsAwarded,
     this.paymentStatus,
@@ -34,6 +38,8 @@ class AppointmentModel {
     this.rating,
     this.ratedAt,
     required this.canRate,
+    this.reviewedAt,
+    this.rejectionReason,
     required this.doctor,
   });
 
@@ -47,6 +53,7 @@ class AppointmentModel {
       price: _toDouble(json['price']),
       discountAmount: _toNullableDouble(json['discount_amount']),
       pointsRedeemed: _toNullableInt(json['points_redeemed']),
+      requestedPointsToRedeem: _toInt(json['requested_points_to_redeem']),
       finalPrice: _toDouble(json['final_price'] ?? json['price']),
       pointsAwarded: _toNullableInt(json['points_awarded']),
       paymentStatus: json['payment_status']?.toString(),
@@ -55,6 +62,8 @@ class AppointmentModel {
       rating: _toNullableInt(json['rating']),
       ratedAt: _parseNullableDateTime(json['rated_at']),
       canRate: json['can_rate'] == true,
+      reviewedAt: _parseNullableDateTime(json['reviewed_at']),
+      rejectionReason: json['rejection_reason']?.toString(),
       doctor: AppointmentDoctorModel.fromJson(
         (json['doctor'] as Map?)?.cast<String, dynamic>() ?? {},
       ),
@@ -71,6 +80,7 @@ class AppointmentModel {
       'price': price.toStringAsFixed(2),
       'discount_amount': discountAmount,
       'points_redeemed': pointsRedeemed,
+      'requested_points_to_redeem': requestedPointsToRedeem,
       'final_price': finalPrice.toStringAsFixed(2),
       'points_awarded': pointsAwarded,
       'payment_status': paymentStatus,
@@ -79,6 +89,8 @@ class AppointmentModel {
       'rating': rating,
       'rated_at': ratedAt?.toIso8601String(),
       'can_rate': canRate,
+      'reviewed_at': reviewedAt?.toIso8601String(),
+      'rejection_reason': rejectionReason,
       'doctor': doctor.toJson(),
     };
   }
@@ -109,6 +121,8 @@ class AppointmentModel {
   bool get isCompleted => status == 'completed';
   bool get isCanceled => status == 'canceled' || status == 'cancelled';
   bool get isNoShow => status == 'no_show';
+  bool get isPendingApproval => status == 'pending_approval';
+  bool get isRejected => status == 'rejected';
 
   /// وقت الموعد عدّى فعليًا (بغض النظر عن حالته بالباك). بنستخدمها بس
   /// عشان نصنّف المواعيد بالواجهة (تاب "المنتهية")، مش كمصدر حقيقة لحالة

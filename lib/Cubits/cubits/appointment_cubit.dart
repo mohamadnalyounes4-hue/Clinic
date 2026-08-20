@@ -2,6 +2,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:nabad/Cubits/states/appointment_state.dart';
 import 'package:nabad/Models/appointment_model.dart';
 import 'package:nabad/Models/doctor_schedule_model.dart';
+import 'package:nabad/Models/doctor_availability_model.dart';
 import 'package:nabad/core/Api/api_consumer.dart';
 import 'package:nabad/core/Api/end_points.dart';
 import 'package:nabad/core/Error/exceptions.dart';
@@ -26,6 +27,40 @@ class AppointmentCubit extends Cubit<AppointmentState> {
     } on ServerExceptions {
       rethrow;
     }
+  }
+
+  Future<List<DoctorAvailableDateModel>> getDoctorAvailableDates({
+    required int doctorId,
+    required DateTime from,
+    required DateTime to,
+  }) async {
+    final response = await api.get(
+      EndPoints.doctorAvailableDates(doctorId),
+      queryParameters: {'from': _formatDate(from), 'to': _formatDate(to)},
+    );
+    final data = response is Map ? response['data'] : null;
+    if (data is! List) return const [];
+    return data
+        .whereType<Map>()
+        .map(
+          (item) =>
+              DoctorAvailableDateModel.fromJson(item.cast<String, dynamic>()),
+        )
+        .toList();
+  }
+
+  Future<DoctorDayAvailabilityModel> getDoctorAvailability({
+    required int doctorId,
+    required DateTime date,
+  }) async {
+    final response = await api.get(
+      EndPoints.doctorAvailability(doctorId),
+      queryParameters: {'date': _formatDate(date)},
+    );
+    final data = response is Map ? response['data'] : null;
+    return DoctorDayAvailabilityModel.fromJson(
+      (data as Map).cast<String, dynamic>(),
+    );
   }
 
   Future<void> getAppointments() async {

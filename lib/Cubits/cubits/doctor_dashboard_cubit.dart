@@ -10,6 +10,7 @@ import 'package:nabad/core/Error/exceptions.dart';
 
 class DoctorDashboardCubit extends Cubit<DoctorDashboardState> {
   final ApiConsumer api;
+  bool _liveRefreshLoading = false;
 
   DoctorDashboardCubit({required this.api})
     : super(const DoctorDashboardState());
@@ -203,6 +204,48 @@ class DoctorDashboardCubit extends Cubit<DoctorDashboardState> {
     }
   }
 
+  Future<void> refreshLiveData() async {
+    final profile = state.profile;
+    if (profile == null || _liveRefreshLoading) return;
+    _liveRefreshLoading = true;
+    try {
+      final responses = await Future.wait<dynamic>([
+        _loadDoctorAppointments(profile),
+        api.get(
+          EndPoints.notifications,
+          queryParameters: {'per_page': 50, 'unread_only': false},
+        ),
+        api.get(EndPoints.unreadNotificationsCount),
+      ]);
+      if (isClosed) return;
+      final appointmentsResult = responses[0] as _AppointmentsLoadResult;
+      final notifications =
+          unwrapList(responses[1], preferredKeys: const ['notifications'])
+              .map(asStringMap)
+              .whereType<Map<String, dynamic>>()
+              .map(DoctorNotification.fromJson)
+              .toList();
+      final unreadMap = unwrapMap(responses[2]);
+      emit(
+        state.copyWith(
+          appointments: appointmentsResult.appointments,
+          notifications: notifications,
+          unreadCount: _toInt(
+            unreadMap['count'] ??
+                unreadMap['unread_count'] ??
+                notifications.where((item) => !item.isRead).length,
+          ),
+          appointmentsError: appointmentsResult.errorMessage,
+          clearAppointmentsError: appointmentsResult.errorMessage == null,
+        ),
+      );
+    } catch (_) {
+      // Background refresh is intentionally silent; existing data stays visible.
+    } finally {
+      _liveRefreshLoading = false;
+    }
+  }
+
   Future<void> markNotificationRead(int id) async {
     if (id == 0) return;
     try {
@@ -275,6 +318,161 @@ class DoctorDashboardCubit extends Cubit<DoctorDashboardState> {
         state.copyWith(
           actionLoading: false,
           errorMessage: 'تعذر حفظ المعاينة. حاول مجددًا.',
+        ),
+      );
+      return false;
+    }
+  }
+
+  Future<bool> updateMedicalRecord(
+    int recordId,
+    Map<String, dynamic> data,
+  ) async {
+    emit(
+      state.copyWith(actionLoading: true, clearError: true, clearNotice: true),
+    );
+    try {
+      await api.put(EndPoints.medicalRecordById(recordId), data: data);
+      emit(
+        state.copyWith(
+          actionLoading: false,
+          notice: 'تم تعديل السجل الطبي بنجاح.',
+        ),
+      );
+      await loadDashboard(showLoader: false);
+      return true;
+    } on ServerExceptions catch (error) {
+      emit(
+        state.copyWith(
+          actionLoading: false,
+          errorMessage: error.errModel.errorMessage,
+        ),
+      );
+      return false;
+    } catch (_) {
+      emit(
+        state.copyWith(
+          actionLoading: false,
+          errorMessage: 'تعذر تعديل السجل الطبي. حاول مجدداً.',
+        ),
+      );
+      return false;
+    }
+  }
+
+  Future<bool> deleteMedicalRecord(int recordId) async {
+    emit(
+      state.copyWith(actionLoading: true, clearError: true, clearNotice: true),
+    );
+    try {
+      await api.delete(EndPoints.medicalRecordById(recordId));
+      emit(state.copyWith(actionLoading: false, notice: 'تم حذف السجل الطبي.'));
+      await loadDashboard(showLoader: false);
+      return true;
+    } on ServerExceptions catch (error) {
+      emit(
+        state.copyWith(
+          actionLoading: false,
+          errorMessage: error.errModel.errorMessage,
+        ),
+      );
+      return false;
+    } catch (_) {
+      emit(
+        state.copyWith(
+          actionLoading: false,
+          errorMessage: 'تعذر حذف السجل الطبي. حاول مجدداً.',
+        ),
+      );
+      return false;
+    }
+  }
+
+  Future<DoctorPrescription?> loadPrescriptionDetails(
+    int prescriptionId,
+  ) async {
+    try {
+      final response = await api.get(
+        EndPoints.prescriptionById(prescriptionId),
+      );
+      return DoctorPrescription.fromJson(
+        (response as Map).cast<String, dynamic>(),
+      );
+    } on ServerExceptions catch (error) {
+      emit(state.copyWith(errorMessage: error.errModel.errorMessage));
+      return null;
+    } catch (_) {
+      emit(state.copyWith(errorMessage: 'تعذر تحميل تفاصيل الوصفة.'));
+      return null;
+    }
+  }
+
+  Future<bool> updatePrescription({
+    required int prescriptionId,
+    required int medicalRecordId,
+    required String instructions,
+    required String notes,
+    required List<VisitMedicineInput> items,
+  }) async {
+    emit(
+      state.copyWith(actionLoading: true, clearError: true, clearNotice: true),
+    );
+    try {
+      await api.put(
+        EndPoints.prescriptionById(prescriptionId),
+        data: {
+          'medical_record_id': medicalRecordId,
+          'instructions': instructions.trim(),
+          'notes': notes.trim(),
+          'items': items.map((item) => item.toApiJson()).toList(),
+        },
+      );
+      emit(
+        state.copyWith(actionLoading: false, notice: 'تم تعديل الوصفة بنجاح.'),
+      );
+      await loadDashboard(showLoader: false);
+      return true;
+    } on ServerExceptions catch (error) {
+      emit(
+        state.copyWith(
+          actionLoading: false,
+          errorMessage: error.errModel.errorMessage,
+        ),
+      );
+      return false;
+    } catch (_) {
+      emit(
+        state.copyWith(
+          actionLoading: false,
+          errorMessage: 'تعذر تعديل الوصفة. حاول مجدداً.',
+        ),
+      );
+      return false;
+    }
+  }
+
+  Future<bool> deletePrescription(int prescriptionId) async {
+    emit(
+      state.copyWith(actionLoading: true, clearError: true, clearNotice: true),
+    );
+    try {
+      await api.delete(EndPoints.deletePrescription(prescriptionId));
+      emit(state.copyWith(actionLoading: false, notice: 'تم حذف الوصفة.'));
+      await loadDashboard(showLoader: false);
+      return true;
+    } on ServerExceptions catch (error) {
+      emit(
+        state.copyWith(
+          actionLoading: false,
+          errorMessage: error.errModel.errorMessage,
+        ),
+      );
+      return false;
+    } catch (_) {
+      emit(
+        state.copyWith(
+          actionLoading: false,
+          errorMessage: 'تعذر حذف الوصفة. حاول مجدداً.',
         ),
       );
       return false;

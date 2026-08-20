@@ -39,6 +39,113 @@ class _AppointmentsScreenState extends State<AppointmentsScreen>
 
   Future<void> _rescheduleAppointment(AppointmentModel appointment) async {
     final now = DateTime.now();
+    try {
+      final dates = await context
+          .read<AppointmentCubit>()
+          .getDoctorAvailableDates(
+            doctorId: appointment.doctor.id,
+            from: now,
+            to: now.add(const Duration(days: 30)),
+          );
+      if (!mounted) return;
+      final availableKeys = dates
+          .where((item) => item.isAvailable)
+          .map((item) => _dateKey(item.date))
+          .toSet();
+      if (availableKeys.isEmpty) {
+        _showMessage('لا توجد أيام متاحة لإعادة الجدولة حالياً.');
+        return;
+      }
+      final firstAvailable = dates.firstWhere((item) => item.isAvailable).date;
+      final pickedDate = await showDatePicker(
+        context: context,
+        initialDate: firstAvailable,
+        firstDate: DateTime(now.year, now.month, now.day),
+        lastDate: now.add(const Duration(days: 30)),
+        selectableDayPredicate: (date) =>
+            availableKeys.contains(_dateKey(date)),
+        helpText: 'اختر تاريخ الموعد الجديد',
+        cancelText: 'إلغاء',
+        confirmText: 'التالي',
+        builder: (context, child) =>
+            Directionality(textDirection: TextDirection.rtl, child: child!),
+      );
+      if (pickedDate == null || !mounted) return;
+
+      final availability = await context
+          .read<AppointmentCubit>()
+          .getDoctorAvailability(
+            doctorId: appointment.doctor.id,
+            date: pickedDate,
+          );
+      if (!mounted) return;
+      final slots = availability.slots.where((slot) => slot.available).toList();
+      if (slots.isEmpty) {
+        _showMessage('لم يعد هناك وقت متاح في هذا اليوم.');
+        return;
+      }
+      final pickedTime = await showDialog<String>(
+        context: context,
+        builder: (dialogContext) => Directionality(
+          textDirection: TextDirection.rtl,
+          child: SimpleDialog(
+            title: const Text('اختر الوقت الجديد'),
+            children: slots
+                .map(
+                  (slot) => SimpleDialogOption(
+                    onPressed: () => Navigator.pop(dialogContext, slot.time),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Text(
+                        '${slot.time} - ${slot.endTime}',
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ),
+                )
+                .toList(),
+          ),
+        ),
+      );
+      if (pickedTime == null || !mounted) return;
+
+      await context.read<AppointmentCubit>().rescheduleAppointment(
+        id: appointment.id,
+        date: pickedDate,
+        time: pickedTime,
+      );
+      if (!mounted) return;
+      _showMessage('تم تحديث موعدك بنجاح.');
+    } on ServerExceptions catch (e) {
+      if (!mounted) return;
+      _showMessage(e.errModel.errorMessage, error: true);
+    } catch (_) {
+      if (!mounted) return;
+      _showMessage('تعذر تعديل الموعد، حاول مرة أخرى.', error: true);
+    }
+  }
+
+  String _dateKey(DateTime date) =>
+      '${date.year.toString().padLeft(4, '0')}-'
+      '${date.month.toString().padLeft(2, '0')}-'
+      '${date.day.toString().padLeft(2, '0')}';
+
+  void _showMessage(String message, {bool error = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: error ? Colors.red.shade700 : null,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  // Kept temporarily as a fallback while the availability flow is rolled out.
+  // ignore: unused_element
+  Future<void> _legacyRescheduleAppointment(
+    AppointmentModel appointment,
+  ) async {
+    final now = DateTime.now();
     final pickedDate = await showDatePicker(
       context: context,
       initialDate: now.add(const Duration(days: 1)),
@@ -330,14 +437,17 @@ class _AppointmentsScreenState extends State<AppointmentsScreen>
   /// معناهم "الموعد ما اتنفذش")، ونضيف "بانتظار تأكيد العيادة" (confirmed
   /// بس عدّى وقتها) لتاب المنتهية عشان ما تفضلش عالقة بقيد الانتظار.
   bool _matchesStatus(AppointmentModel appointment, String tabStatus) {
-    if (appointment.isCanceled || appointment.isNoShow) {
+    if (appointment.isCanceled ||
+        appointment.isNoShow ||
+        appointment.isRejected) {
       return tabStatus == 'canceled';
     }
 
     final isConfirmedActive = appointment.status == 'confirmed';
 
     if (tabStatus == 'confirmed') {
-      return isConfirmedActive && !appointment.isPastScheduledTime;
+      return appointment.isPendingApproval ||
+          (isConfirmedActive && !appointment.isPastScheduledTime);
     }
 
     if (tabStatus == 'completed') {

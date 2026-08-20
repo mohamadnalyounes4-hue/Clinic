@@ -25,6 +25,9 @@ class AppointmentCard extends StatelessWidget {
     final isPastUnconfirmed = isConfirmed && appointment.isPastScheduledTime;
     final isCanceled = appointment.isCanceled;
     final isNoShow = appointment.isNoShow;
+    final isPendingApproval = appointment.isPendingApproval;
+    final isRejected = appointment.isRejected;
+    final canReschedule = isActive || isPendingApproval;
 
     return Card(
       color: NabadColors.white,
@@ -141,12 +144,14 @@ class AppointmentCard extends StatelessWidget {
             const SizedBox(height: 8),
             const Divider(color: NabadColors.divider, height: 1),
 
-            if (isActive)
+            if (canReschedule)
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'للإلغاء تواصل مع العيادة',
+                    isPendingApproval
+                        ? 'بانتظار موافقة السكرتاريا'
+                        : 'للإلغاء تواصل مع العيادة',
                     style: TextStyle(
                       fontSize: 11.5,
                       color: NabadColors.mutedText.withOpacity(0.85),
@@ -167,7 +172,7 @@ class AppointmentCard extends StatelessWidget {
                 ],
               ),
 
-            if (!isActive)
+            if (!canReschedule)
               Padding(
                 padding: const EdgeInsets.only(top: 8),
                 child: Row(
@@ -218,7 +223,9 @@ class AppointmentCard extends StatelessWidget {
                         vertical: 5,
                       ),
                       decoration: BoxDecoration(
-                        color: isCanceled
+                        color: isRejected
+                            ? const Color(0xFFFFEBEE)
+                            : isCanceled
                             ? const Color(0xFFFFEBEE)
                             : isNoShow
                             ? const Color(0xFFF0F0F0)
@@ -228,7 +235,9 @@ class AppointmentCard extends StatelessWidget {
                         borderRadius: BorderRadius.circular(50),
                       ),
                       child: Text(
-                        isCanceled
+                        isRejected
+                            ? 'مرفوض'
+                            : isCanceled
                             ? 'ملغى'
                             : isNoShow
                             ? 'لم يحضر'
@@ -238,7 +247,9 @@ class AppointmentCard extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
-                          color: isCanceled
+                          color: isRejected
+                              ? const Color(0xFFE53935)
+                              : isCanceled
                               ? const Color(0xFFE53935)
                               : isNoShow
                               ? const Color(0xFF757575)
@@ -249,6 +260,26 @@ class AppointmentCard extends StatelessWidget {
                       ),
                     ),
                   ],
+                ),
+              ),
+            if (isRejected &&
+                appointment.rejectionReason?.trim().isNotEmpty == true)
+              Container(
+                width: double.infinity,
+                margin: const EdgeInsets.only(top: 8),
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF5F5),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  'سبب الرفض: ${appointment.rejectionReason}',
+                  textDirection: TextDirection.rtl,
+                  style: const TextStyle(
+                    color: Color(0xFFC62828),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
           ],

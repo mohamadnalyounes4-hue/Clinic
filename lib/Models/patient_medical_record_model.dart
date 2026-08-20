@@ -55,7 +55,7 @@ class PatientMedicalRecord {
     );
 
     return PatientMedicalRecord(
-      id: _asInt(json['id'] ?? json['medical_record_id']),
+      id: _asInt(json['record_id'] ?? json['id'] ?? json['medical_record_id']),
       appointmentId: _asInt(json['appointment_id'] ?? appointment['id']),
       diagnosis: _firstText([
         json['diagnosis'],

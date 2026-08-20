@@ -2,22 +2,29 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:nabad/Cubits/cubits/appointment_cubit.dart';
+import 'package:nabad/Cubits/cubits/medicine_reminder_cubit.dart';
 import 'package:nabad/Cubits/cubits/department_cubit.dart';
 import 'package:nabad/Cubits/cubits/doctor_cubit.dart';
 import 'package:nabad/Cubits/cubits/doctor_dashboard_cubit.dart';
-import 'package:nabad/Cubits/cubits/points_cubit.dart';
 import 'package:nabad/Cubits/cubits/patient_medical_record_cubit.dart';
+import 'package:nabad/Cubits/cubits/patient_notification_cubit.dart';
+import 'package:nabad/Cubits/cubits/points_cubit.dart';
+import 'package:nabad/Cubits/cubits/points_history_cubit.dart';
 import 'package:nabad/Cubits/cubits/user_cubit.dart';
 import 'package:nabad/Cubits/cubits/wallet_cubit.dart';
+import 'package:nabad/Cubits/cubits/theme_cubit.dart';
 import 'package:nabad/Repositories/user_repository.dart';
 import 'package:nabad/core/Api/dio_consumer.dart';
 import 'package:nabad/core/Api/end_points.dart';
 import 'package:nabad/core/Cache/cache_helper.dart';
+import 'package:nabad/core/notifications/medicine_reminder_service.dart';
 import 'core/router/app_router.dart';
+import 'core/theme/nabad_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await CacheHelper.init();
+  await MedicineReminderService.instance.initialize();
 
   final token = CacheHelper.getData(key: ApiKey.token);
   final role = CacheHelper.getData(key: ApiKey.role);
@@ -53,18 +60,26 @@ class NabadApp extends StatelessWidget {
         BlocProvider(create: (_) => DoctorCubit(api: api)),
         BlocProvider(create: (_) => DoctorDashboardCubit(api: api)),
         BlocProvider(create: (_) => AppointmentCubit(api: api)),
-        BlocProvider(create: (_) => PatientMedicalRecordCubit(api: api)),
-        BlocProvider(create: (_) => PointsCubit(api: api)),
-        BlocProvider(create: (_) => WalletCubit(api: api)),
-      ],
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-          useMaterial3: true,
+        BlocProvider(
+          create: (_) =>
+              MedicineReminderCubit(service: MedicineReminderService.instance),
         ),
-        initialRoute: initialRoute,
-        onGenerateRoute: AppRouter.generateRoute,
+        BlocProvider(create: (_) => PatientMedicalRecordCubit(api: api)),
+        BlocProvider(create: (_) => PatientNotificationCubit(api: api)),
+        BlocProvider(create: (_) => PointsCubit(api: api)),
+        BlocProvider(create: (_) => PointsHistoryCubit(api: api)),
+        BlocProvider(create: (_) => WalletCubit(api: api)),
+        BlocProvider(create: (_) => ThemeCubit()),
+      ],
+      child: BlocBuilder<ThemeCubit, ThemeMode>(
+        builder: (context, themeMode) => MaterialApp(
+          debugShowCheckedModeBanner: false,
+          theme: NabadTheme.light,
+          darkTheme: NabadTheme.dark,
+          themeMode: themeMode,
+          initialRoute: initialRoute,
+          onGenerateRoute: AppRouter.generateRoute,
+        ),
       ),
     );
   }

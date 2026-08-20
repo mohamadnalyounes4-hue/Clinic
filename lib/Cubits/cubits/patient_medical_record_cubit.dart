@@ -23,7 +23,7 @@ class PatientMedicalRecordCubit extends Cubit<PatientMedicalRecordState> {
         _safeGet(EndPoints.patientMedicalRecords),
         _safeGet(EndPoints.profilePatient),
         _safeGet(EndPoints.appointments),
-        _safeGet(EndPoints.prescriptions),
+        _safeGet(EndPoints.patientPrescriptions),
       ]);
 
       if (responses.take(3).every((response) => response == null)) {

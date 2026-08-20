@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:nabad/Cubits/cubits/appointment_cubit.dart';
+import 'package:nabad/Cubits/cubits/medicine_reminder_cubit.dart';
 import 'package:nabad/Cubits/cubits/patient_medical_record_cubit.dart';
 import 'package:nabad/Cubits/cubits/user_cubit.dart';
 import 'package:nabad/Cubits/states/appointment_state.dart';
+import 'package:nabad/Cubits/states/medicine_reminder_state.dart';
 import 'package:nabad/Cubits/states/patient_medical_record_state.dart';
 import 'package:nabad/Cubits/states/user_state.dart';
 import 'package:nabad/Models/appointment_model.dart';
@@ -30,13 +32,14 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
       }
       context.read<AppointmentCubit>().getAppointments();
       context.read<PatientMedicalRecordCubit>().loadMedicalFile();
+      context.read<MedicineReminderCubit>().load();
     });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FBFB),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: BlocConsumer<UserCubit, UserState>(
         listener: (context, state) {
           if (state is LogoutSuccess) {
@@ -448,14 +451,30 @@ class _ProfileContent extends StatelessWidget {
                     ),
                     const SizedBox(width: 10),
                     Expanded(
-                      child: _ActionCard(
-                        icon: Icons.medication_outlined,
-                        label: 'تذكير دواء',
-                        sub: 'أضف تذكيراً',
-                        btnText: 'إضافة',
-                        btnColor: NabadColors.primary,
-                        onTap: () {},
-                      ),
+                      child:
+                          BlocBuilder<
+                            MedicineReminderCubit,
+                            MedicineReminderState
+                          >(
+                            builder: (context, reminderState) {
+                              final active = reminderState.reminders
+                                  .where((item) => item.enabled)
+                                  .length;
+                              return _ActionCard(
+                                icon: Icons.medication_outlined,
+                                label: 'تذكير دواء',
+                                sub: active == 0
+                                    ? 'أضف تذكيراً'
+                                    : '$active تذكير نشط',
+                                btnText: active == 0 ? 'إضافة' : 'إدارة',
+                                btnColor: NabadColors.primary,
+                                onTap: () => Navigator.pushNamed(
+                                  context,
+                                  AppRoutes.medicineReminders,
+                                ),
+                              );
+                            },
+                          ),
                     ),
                   ],
                 ),
@@ -503,6 +522,7 @@ class _ProfileContent extends StatelessWidget {
                 const SizedBox(height: 24),
 
                 _menuItem(
+                  context,
                   Icons.person_outline_rounded,
                   'المعلومات الشخصية',
                   () => Navigator.of(context).push(
@@ -513,9 +533,16 @@ class _ProfileContent extends StatelessWidget {
                   ),
                 ),
                 _menuItem(
+                  context,
                   Icons.account_balance_wallet_outlined,
                   'محفظتي',
                   () => Navigator.pushNamed(context, AppRoutes.wallet),
+                ),
+                _menuItem(
+                  context,
+                  Icons.settings_outlined,
+                  'الإعدادات',
+                  () => Navigator.pushNamed(context, AppRoutes.patientSettings),
                 ),
 
                 const SizedBox(height: 20),
@@ -553,7 +580,13 @@ class _ProfileContent extends StatelessWidget {
     );
   }
 
-  Widget _menuItem(IconData icon, String label, VoidCallback onTap) {
+  Widget _menuItem(
+    BuildContext context,
+    IconData icon,
+    String label,
+    VoidCallback onTap,
+  ) {
+    final colors = Theme.of(context).colorScheme;
     return ListTile(
       contentPadding: EdgeInsets.zero,
       leading: Container(
@@ -567,8 +600,8 @@ class _ProfileContent extends StatelessWidget {
       ),
       title: Text(
         label,
-        style: const TextStyle(
-          color: NabadColors.darkText,
+        style: TextStyle(
+          color: colors.onSurface,
           fontWeight: FontWeight.w800,
           fontSize: 14,
         ),
@@ -693,7 +726,7 @@ class _PersonalInformationPage extends StatelessWidget {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: const Color(0xFFF8FBFB),
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         appBar: AppBar(
           backgroundColor: NabadColors.primary,
           foregroundColor: Colors.white,
@@ -1265,10 +1298,13 @@ class _ActionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.all(13),
       decoration: BoxDecoration(
-        color: const Color(0xFFC9F3F8),
+        color: dark
+            ? Theme.of(context).colorScheme.surface
+            : const Color(0xFFC9F3F8),
         borderRadius: BorderRadius.circular(22),
       ),
       child: Column(
@@ -1281,10 +1317,12 @@ class _ActionCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   label,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w900,
-                    color: NabadColors.deepTeal,
+                    color: dark
+                        ? Theme.of(context).colorScheme.onSurface
+                        : NabadColors.deepTeal,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -1365,8 +1403,8 @@ class _SectionTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       title,
-      style: const TextStyle(
-        color: NabadColors.darkText,
+      style: TextStyle(
+        color: Theme.of(context).colorScheme.onSurface,
         fontSize: 17,
         fontWeight: FontWeight.w900,
       ),
@@ -1383,7 +1421,7 @@ class _InfoCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
