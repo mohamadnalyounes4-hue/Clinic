@@ -42,7 +42,10 @@ void main() {
         find.textContaining('سمير المنصوري', findRichText: true),
         findsOneWidget,
       );
-      expect(find.text('إجراءات سريعة'), findsOneWidget);
+      expect(find.text('مواعيد اليوم'), findsOneWidget);
+      expect(find.text('مرضى بانتظارك'), findsNothing);
+      expect(find.text('تنبيهات جديدة'), findsNothing);
+      expect(find.text('إجراءات سريعة'), findsNothing);
       expect(tester.takeException(), isNull);
 
       await tester.tap(find.text('مواعيدي').last);
@@ -137,7 +140,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Quick actions'), findsOneWidget);
+    expect(find.text("Today's appointments"), findsOneWidget);
+    expect(find.text('Patients waiting'), findsNothing);
+    expect(find.text('New alerts'), findsNothing);
+    expect(find.text('Quick actions'), findsNothing);
     await tester.tap(find.text('Profile').last);
     await tester.pumpAndSettle();
     expect(find.text('Settings'), findsOneWidget);

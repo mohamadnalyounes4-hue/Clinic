@@ -279,43 +279,11 @@ class _TransactionTile extends StatelessWidget {
         border: Border.all(color: NabadColors.divider),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Text(
-            '$sign${transaction.amount.abs().toStringAsFixed(0)} ${context.tr('ل.س')}',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w800,
-              color: color,
-            ),
-          ),
-          const Spacer(),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                transaction.displayLabel,
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: NabadColors.darkText,
-                ),
-              ),
-              if (transaction.createdAt != null) ...[
-                const SizedBox(height: 3),
-                Text(
-                  _formatDate(transaction.createdAt!),
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: NabadColors.mutedText,
-                  ),
-                ),
-              ],
-            ],
-          ),
-          const SizedBox(width: 10),
           Container(
-            width: 38,
-            height: 38,
+            width: 42,
+            height: 42,
             decoration: BoxDecoration(
               color: color.withAlpha(25),
               borderRadius: BorderRadius.circular(12),
@@ -325,7 +293,56 @@ class _TransactionTile extends StatelessWidget {
                   ? Icons.arrow_downward_rounded
                   : Icons.arrow_upward_rounded,
               color: color,
-              size: 20,
+              size: 21,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  transaction.displayLabel,
+                  maxLines: 2,
+                  softWrap: true,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.start,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    height: 1.25,
+                    fontWeight: FontWeight.w700,
+                    color: NabadColors.darkText,
+                  ),
+                ),
+                if (transaction.createdAt != null) ...[
+                  const SizedBox(height: 5),
+                  Text(
+                    _formatDate(transaction.createdAt!),
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: NabadColors.mutedText,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          SizedBox(
+            width: 92,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: AlignmentDirectional.centerEnd,
+              child: Text(
+                '$sign${transaction.amount.abs().toStringAsFixed(0)} ${context.tr('ل.س')}',
+                maxLines: 1,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  color: color,
+                ),
+              ),
             ),
           ),
         ],

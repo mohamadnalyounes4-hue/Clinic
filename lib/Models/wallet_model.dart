@@ -26,6 +26,7 @@ class WalletModel {
 class WalletTransactionModel {
   final int id;
   final String type; // النص الخام من الباك زي ما هو (deposit/payment/refund...)
+  final String direction;
   final double amount;
   final String? description;
   final DateTime? createdAt;
@@ -33,6 +34,7 @@ class WalletTransactionModel {
   const WalletTransactionModel({
     required this.id,
     required this.type,
+    this.direction = '',
     required this.amount,
     this.description,
     this.createdAt,
@@ -42,6 +44,7 @@ class WalletTransactionModel {
     return WalletTransactionModel(
       id: _toInt(json['id']),
       type: (json['type'] ?? json['transaction_type'] ?? '').toString(),
+      direction: (json['direction'] ?? '').toString().trim().toLowerCase(),
       amount: _toDouble(json['amount']),
       description: (json['description'] ?? json['note'])?.toString(),
       createdAt: _parseDate(json['created_at'] ?? json['date']),
@@ -49,6 +52,11 @@ class WalletTransactionModel {
   }
 
   bool get isCredit {
+    if (direction == 'credit') return true;
+    if (direction == 'debit') return false;
+
+    // Compatibility fallback for older API responses that did not include
+    // direction. New responses must use the authoritative server value above.
     final t = type.toLowerCase();
     const creditHints = [
       'credit',

@@ -162,8 +162,6 @@ class _DoctorHomePageState extends State<DoctorHomePage>
           onNotifications: _openNotifications,
           onDetails: _showPatientDetails,
           onStart: _showExamination,
-          onPrescriptions: () => _openPrescriptions(state.prescriptions),
-          onLabs: () => _openLabs(state.medicalRecords),
         );
     }
   }
@@ -174,26 +172,6 @@ class _DoctorHomePageState extends State<DoctorHomePage>
         builder: (_) => BlocProvider.value(
           value: context.read<DoctorDashboardCubit>(),
           child: const _NotificationsPage(),
-        ),
-      ),
-    );
-  }
-
-  void _openPrescriptions(List<DoctorPrescription> items) {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => _PrescriptionsPage(prescriptions: items),
-      ),
-    );
-  }
-
-  void _openLabs(List<DoctorMedicalRecord> items) {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => _LaboratoryPage(
-          records: items
-              .where((record) => record.referredToLaboratory)
-              .toList(),
         ),
       ),
     );
@@ -232,8 +210,6 @@ class _Dashboard extends StatelessWidget {
   final VoidCallback onNotifications;
   final ValueChanged<DoctorAppointment> onDetails;
   final ValueChanged<DoctorAppointment> onStart;
-  final VoidCallback onPrescriptions;
-  final VoidCallback onLabs;
 
   const _Dashboard({
     required this.state,
@@ -241,8 +217,6 @@ class _Dashboard extends StatelessWidget {
     required this.onNotifications,
     required this.onDetails,
     required this.onStart,
-    required this.onPrescriptions,
-    required this.onLabs,
   });
 
   @override
@@ -273,11 +247,7 @@ class _Dashboard extends StatelessWidget {
                 const SizedBox(height: 27),
                 _Greeting(profile: state.profile),
                 const SizedBox(height: 23),
-                _Overview(
-                  appointments: today,
-                  waiting: state.waitingPatients,
-                  notifications: state.unreadCount,
-                ),
+                _Overview(appointments: today),
                 if (state.appointmentsError != null) ...[
                   const SizedBox(height: 14),
                   _AppointmentsApiWarning(message: state.appointmentsError!),
@@ -293,23 +263,7 @@ class _Dashboard extends StatelessWidget {
                   onDetails: next == null ? null : () => onDetails(next),
                   onStart: next == null ? null : () => onStart(next),
                 ),
-                const SizedBox(height: 28),
-                const LocalizedText(
-                  'إجراءات سريعة',
-                  style: TextStyle(
-                    color: _ink,
-                    fontSize: 19,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 11),
-                _QuickActions(
-                  onAppointments: () => onSelectTab(1),
-                  onRecords: () => onSelectTab(3),
-                  onPrescriptions: onPrescriptions,
-                  onLabs: onLabs,
-                ),
-                const SizedBox(height: 27),
+                const SizedBox(height: 30),
                 _SectionHeading(
                   title: 'المواعيد القادمة',
                   action: 'عرض الكل',
@@ -472,47 +426,16 @@ class _Greeting extends StatelessWidget {
 
 class _Overview extends StatelessWidget {
   final List<DoctorAppointment> appointments;
-  final int waiting;
-  final int notifications;
 
-  const _Overview({
-    required this.appointments,
-    required this.waiting,
-    required this.notifications,
-  });
+  const _Overview({required this.appointments});
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: _MetricCard(
-            icon: Icons.calendar_today_outlined,
-            value: '${appointments.length}',
-            title: 'مواعيد اليوم',
-            subtitle: _workingHours(appointments),
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: _MetricCard(
-            icon: Icons.people_alt_outlined,
-            value: '$waiting',
-            title: 'مرضى بانتظارك',
-            subtitle: waiting == 0 ? 'لا يوجد انتظار' : 'في العيادة',
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: _MetricCard(
-            icon: Icons.notifications_none_rounded,
-            value: '$notifications',
-            title: 'تنبيهات جديدة',
-            subtitle: notifications == 0 ? 'لا تنبيهات' : 'تحتاج إلى انتباه',
-            danger: notifications > 0,
-          ),
-        ),
-      ],
+    return _MetricCard(
+      icon: Icons.calendar_today_outlined,
+      value: '${appointments.length}',
+      title: 'مواعيد اليوم',
+      subtitle: _workingHours(appointments),
     );
   }
 
@@ -533,22 +456,19 @@ class _MetricCard extends StatelessWidget {
   final String value;
   final String title;
   final String subtitle;
-  final bool danger;
 
   const _MetricCard({
     required this.icon,
     required this.value,
     required this.title,
     required this.subtitle,
-    this.danger = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    final accent = danger ? _danger : _deepTeal;
     return Container(
-      height: 145,
-      padding: const EdgeInsets.fromLTRB(8, 14, 8, 12),
+      constraints: const BoxConstraints(minHeight: 104),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
@@ -560,51 +480,52 @@ class _MetricCard extends StatelessWidget {
           ),
         ],
       ),
-      child: Column(
+      child: Row(
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: danger
-                      ? const Color(0xFFFFE7E9)
-                      : const Color(0xFFE4F5F7),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(icon, color: accent, size: 23),
-              ),
-              LocalizedText(
-                value,
-                style: TextStyle(
-                  color: accent,
-                  fontSize: 28,
-                  height: 1,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ],
+          Container(
+            width: 54,
+            height: 54,
+            decoration: const BoxDecoration(
+              color: Color(0xFFE4F5F7),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: _deepTeal, size: 28),
           ),
-          const Spacer(),
-          LocalizedText(
-            title,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: _ink,
-              fontSize: 13.5,
-              fontWeight: FontWeight.w800,
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                LocalizedText(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: _ink,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 7),
+                LocalizedText(
+                  subtitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: _muted, fontSize: 13),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 5),
+          const SizedBox(width: 12),
           LocalizedText(
-            subtitle,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: _muted, fontSize: 10.5),
+            value,
+            style: const TextStyle(
+              color: _deepTeal,
+              fontSize: 34,
+              height: 1,
+              fontWeight: FontWeight.w900,
+            ),
           ),
         ],
       ),
@@ -833,80 +754,6 @@ class _NextAppointmentCard extends StatelessWidget {
           offset: Offset(0, 13),
         ),
       ],
-    );
-  }
-}
-
-class _QuickActions extends StatelessWidget {
-  final VoidCallback onAppointments;
-  final VoidCallback onRecords;
-  final VoidCallback onPrescriptions;
-  final VoidCallback onLabs;
-
-  const _QuickActions({
-    required this.onAppointments,
-    required this.onRecords,
-    required this.onPrescriptions,
-    required this.onLabs,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final actions = [
-      (Icons.calendar_today_outlined, 'مواعيدي', onAppointments),
-      (Icons.description_outlined, 'السجلات', onRecords),
-      (Icons.medication_outlined, 'الوصفات', onPrescriptions),
-      (Icons.science_outlined, 'التحاليل', onLabs),
-    ];
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 17, horizontal: 6),
-      decoration: _whiteCardDecoration(25),
-      child: Row(
-        children: List.generate(actions.length, (index) {
-          final action = actions[index];
-          return Expanded(
-            child: Row(
-              children: [
-                if (index > 0)
-                  Container(
-                    width: 1,
-                    height: 52,
-                    color: const Color(0xFFE1EAED),
-                  ),
-                Expanded(
-                  child: InkWell(
-                    onTap: action.$3,
-                    borderRadius: BorderRadius.circular(18),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 48,
-                          height: 48,
-                          decoration: const BoxDecoration(
-                            color: _paleTeal,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(action.$1, color: _teal, size: 27),
-                        ),
-                        const SizedBox(height: 8),
-                        LocalizedText(
-                          action.$2,
-                          style: const TextStyle(
-                            color: _ink,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          );
-        }),
-      ),
     );
   }
 }
@@ -2776,6 +2623,8 @@ class _NotificationsPage extends StatelessWidget {
   }
 }
 
+// Kept as a standalone destination for a future records-page entry point.
+// ignore: unused_element
 class _PrescriptionsPage extends StatelessWidget {
   final List<DoctorPrescription> prescriptions;
 
@@ -3155,6 +3004,8 @@ class _PrescriptionDetailsPageState extends State<_PrescriptionDetailsPage> {
   }
 }
 
+// Kept as a standalone destination for a future records-page entry point.
+// ignore: unused_element
 class _LaboratoryPage extends StatelessWidget {
   final List<DoctorMedicalRecord> records;
 
