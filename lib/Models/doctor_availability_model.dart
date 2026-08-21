@@ -2,11 +2,13 @@ class DoctorAvailableDateModel {
   final DateTime date;
   final bool isAvailable;
   final int availableSlots;
+  final String? bookingBlockReason;
 
   const DoctorAvailableDateModel({
     required this.date,
     required this.isAvailable,
     required this.availableSlots,
+    this.bookingBlockReason,
   });
 
   factory DoctorAvailableDateModel.fromJson(Map<String, dynamic> json) {
@@ -14,6 +16,7 @@ class DoctorAvailableDateModel {
       date: DateTime.parse(json['date'].toString()),
       isAvailable: json['is_available'] == true || json['is_available'] == 1,
       availableSlots: _toInt(json['available_slots']),
+      bookingBlockReason: json['booking_block_reason']?.toString(),
     );
   }
 }
@@ -46,12 +49,14 @@ class DoctorDayAvailabilityModel {
   final bool isWorkingDay;
   final int durationMinutes;
   final List<DoctorAvailabilitySlotModel> slots;
+  final String? bookingBlockReason;
 
   const DoctorDayAvailabilityModel({
     required this.date,
     required this.isWorkingDay,
     required this.durationMinutes,
     required this.slots,
+    this.bookingBlockReason,
   });
 
   factory DoctorDayAvailabilityModel.fromJson(Map<String, dynamic> json) {
@@ -69,6 +74,7 @@ class DoctorDayAvailabilityModel {
             ),
           )
           .toList(),
+      bookingBlockReason: json['booking_block_reason']?.toString(),
     );
   }
 }

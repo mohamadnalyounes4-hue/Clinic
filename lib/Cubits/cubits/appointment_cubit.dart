@@ -3,6 +3,7 @@ import 'package:nabad/Cubits/states/appointment_state.dart';
 import 'package:nabad/Models/appointment_model.dart';
 import 'package:nabad/Models/doctor_schedule_model.dart';
 import 'package:nabad/Models/doctor_availability_model.dart';
+import 'package:nabad/Models/points_model.dart';
 import 'package:nabad/core/Api/api_consumer.dart';
 import 'package:nabad/core/Api/end_points.dart';
 import 'package:nabad/core/Error/exceptions.dart';
@@ -33,10 +34,15 @@ class AppointmentCubit extends Cubit<AppointmentState> {
     required int doctorId,
     required DateTime from,
     required DateTime to,
+    int? ignoreAppointmentId,
   }) async {
     final response = await api.get(
       EndPoints.doctorAvailableDates(doctorId),
-      queryParameters: {'from': _formatDate(from), 'to': _formatDate(to)},
+      queryParameters: {
+        'from': _formatDate(from),
+        'to': _formatDate(to),
+        'ignore_appointment_id': ?ignoreAppointmentId,
+      },
     );
     final data = response is Map ? response['data'] : null;
     if (data is! List) return const [];
@@ -52,10 +58,14 @@ class AppointmentCubit extends Cubit<AppointmentState> {
   Future<DoctorDayAvailabilityModel> getDoctorAvailability({
     required int doctorId,
     required DateTime date,
+    int? ignoreAppointmentId,
   }) async {
     final response = await api.get(
       EndPoints.doctorAvailability(doctorId),
-      queryParameters: {'date': _formatDate(date)},
+      queryParameters: {
+        'date': _formatDate(date),
+        'ignore_appointment_id': ?ignoreAppointmentId,
+      },
     );
     final data = response is Map ? response['data'] : null;
     return DoctorDayAvailabilityModel.fromJson(
@@ -94,12 +104,25 @@ class AppointmentCubit extends Cubit<AppointmentState> {
   /// ServerExceptions عند الفشل (422) لأي سبب من دول: الطبيب ما بيشتغلش
   /// اليوم ده، الوقت خارج الدوام، تعارض مع موعد تاني (للطبيب أو للمريض)،
   /// الرصيد مش كافي، أو النقاط مش كافية.
+  ///
+  /// ملاحظة مالية: السيرفر وحده مسؤول عن خصم محفظة المريض وإيداع
+  /// [final_price] في محفظة الطبيب ضمن transaction واحدة. التطبيق لا يرسل
+  /// سعراً محسوباً من طرفه؛ يرسل خيار الاستبدال فقط حتى لا يمكن التلاعب
+  /// بقيمة التحويل.
   Future<AppointmentModel> bookAppointment({
     required int doctorId,
     required DateTime date,
     required String time, // "HH:mm"
     int pointsToRedeem = 0,
   }) async {
+    if (pointsToRedeem != 0 &&
+        pointsToRedeem != LoyaltyPolicy.pointsRequiredForDiscount) {
+      throw ArgumentError.value(
+        pointsToRedeem,
+        'pointsToRedeem',
+        'Only 0 or ${LoyaltyPolicy.pointsRequiredForDiscount} points are allowed',
+      );
+    }
     try {
       final response = await api.post(
         EndPoints.appointments,

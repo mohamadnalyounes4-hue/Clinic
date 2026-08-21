@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:nabad/core/theme/nabad_colors.dart';
+import 'package:nabad/core/localization/app_localizations.dart';
 
 class RegisterHeader extends StatelessWidget {
   final VoidCallback onBack;
@@ -179,9 +180,9 @@ class _FloatingProfilePhotoButton extends StatelessWidget {
               borderRadius: BorderRadius.circular(999),
               border: Border.all(color: NabadColors.primary.withAlpha(22)),
             ),
-            child: const Text(
-              'ضع صورة شخصية',
-              style: TextStyle(
+            child: Text(
+              context.tr('ضع صورة شخصية'),
+              style: const TextStyle(
                 color: NabadColors.deepTeal,
                 fontSize: 12.5,
                 fontWeight: FontWeight.w900,

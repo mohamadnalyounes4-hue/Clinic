@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:nabad/core/theme/nabad_colors.dart';
+import 'package:nabad/core/localization/app_localizations.dart';
 
 class RegisterFormCard extends StatelessWidget {
   final GlobalKey<FormState> formKey;
@@ -68,9 +69,9 @@ class RegisterFormCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text(
-              'المعلومات الشخصية',
-              style: TextStyle(
+            Text(
+              context.tr('المعلومات الشخصية'),
+              style: const TextStyle(
                 color: NabadColors.darkText,
                 fontSize: 20,
                 fontWeight: FontWeight.w900,
@@ -82,7 +83,7 @@ class RegisterFormCard extends StatelessWidget {
                 Expanded(
                   child: _RegisterTextField(
                     controller: firstNameController,
-                    label: 'الاسم الأول',
+                    label: context.tr('الاسم الأول'),
                     hintText: '',
                     icon: Icons.person_rounded,
                     validator: validateFirstName,
@@ -93,7 +94,7 @@ class RegisterFormCard extends StatelessWidget {
                 Expanded(
                   child: _RegisterTextField(
                     controller: lastNameController,
-                    label: 'الاسم الأخير',
+                    label: context.tr('الاسم الأخير'),
                     hintText: '',
                     icon: Icons.badge_rounded,
                     validator: validateLastName,
@@ -105,7 +106,7 @@ class RegisterFormCard extends StatelessWidget {
             const SizedBox(height: 14),
             _RegisterTextField(
               controller: emailController,
-              label: 'البريد الإلكتروني',
+              label: context.tr('البريد الإلكتروني'),
               hintText: 'example@mail.com',
               icon: Icons.email_rounded,
               keyboardType: TextInputType.emailAddress,
@@ -115,7 +116,7 @@ class RegisterFormCard extends StatelessWidget {
             const SizedBox(height: 14),
             _RegisterTextField(
               controller: phoneController,
-              label: 'رقم الهاتف',
+              label: context.tr('رقم الهاتف'),
               hintText: '--------09',
               icon: Icons.phone_rounded,
               keyboardType: TextInputType.phone,
@@ -125,8 +126,8 @@ class RegisterFormCard extends StatelessWidget {
             const SizedBox(height: 14),
             _RegisterTextField(
               controller: passwordController,
-              label: 'كلمة السر',
-              hintText: 'أدخل كلمة السر',
+              label: context.tr('كلمة السر'),
+              hintText: context.tr('أدخل كلمة السر'),
               icon: Icons.lock_rounded,
               obscureText: obscurePassword,
               validator: validatePassword,
@@ -159,8 +160,8 @@ class RegisterFormCard extends StatelessWidget {
             const SizedBox(height: 14),
             _RegisterTextField(
               controller: confirmPasswordController,
-              label: 'تأكيد كلمة السر',
-              hintText: 'أعد إدخال كلمة السر',
+              label: context.tr('تأكيد كلمة السر'),
+              hintText: context.tr('أعد إدخال كلمة السر'),
               icon: Icons.verified_user_rounded,
               obscureText: obscureConfirmPassword,
               validator: validateConfirmPassword,
@@ -187,9 +188,12 @@ class RegisterFormCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(20),
                   ),
                 ),
-                child: const Text(
-                  'إنشاء الحساب',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+                child: Text(
+                  context.tr('إنشاء الحساب'),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
               ),
             ),

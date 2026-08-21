@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:nabad/Models/doctor_model.dart';
+import 'package:nabad/core/localization/app_localizations.dart';
 import 'package:nabad/core/theme/nabad_colors.dart';
 import 'package:nabad/screens/HomePage_patient/booking_detail_screen.dart';
 
@@ -8,32 +9,55 @@ class DoctorProfileBookingScreen extends StatelessWidget {
 
   const DoctorProfileBookingScreen({super.key, required this.doctor});
 
-  String get _doctorName => 'د. ${doctor.fullName}'.trim();
+  String _doctorName(BuildContext context) =>
+      '${context.l10n.isArabic ? 'د.' : 'Dr.'} ${doctor.fullName}'.trim();
 
-  String get _specialty =>
+  String _specialty(BuildContext context) =>
       (doctor.specialization == null || doctor.specialization!.trim().isEmpty)
-      ? 'طبيب مختص'
-      : doctor.specialization!.trim();
+      ? context.tr('طبيب مختص')
+      : context.tr(doctor.specialization!.trim());
 
   int get _experience => doctor.yearsOfExperience ?? 0;
 
-  String get _aboutText {
+  String _aboutText(BuildContext context) {
     final certificate = doctor.certificate?.trim();
     final experienceText = _experience > 0
-        ? 'يمتلك خبرة تمتد لأكثر من $_experience سنوات في تقديم الرعاية الطبية ومتابعة الحالات بدقة.'
-        : 'يمتلك خبرة واسعة في تقديم الرعاية الطبية ومتابعة الحالات بدقة.';
+        ? context.tr(
+            'يمتلك خبرة تمتد لأكثر من {count} سنوات في تقديم الرعاية الطبية ومتابعة الحالات بدقة.',
+            {'count': _experience},
+          )
+        : context.tr(
+            'يمتلك خبرة واسعة في تقديم الرعاية الطبية ومتابعة الحالات بدقة.',
+          );
 
     if (certificate != null && certificate.isNotEmpty) {
-      return '$_doctorName مختص في $_specialty، حاصل على $certificate. $experienceText يعمل على تقديم استشارات طبية واضحة وخطة علاج مناسبة لكل مريض.';
+      return context.tr(
+        '{doctor} مختص في {specialty}، حاصل على {certificate}. {experience} يعمل على تقديم استشارات طبية واضحة وخطة علاج مناسبة لكل مريض.',
+        {
+          'doctor': _doctorName(context),
+          'specialty': _specialty(context),
+          'certificate': certificate,
+          'experience': experienceText,
+        },
+      );
     }
 
-    return '$_doctorName مختص في $_specialty. $experienceText يعمل على تقديم استشارات طبية واضحة وخطة علاج مناسبة لكل مريض.';
+    return context.tr(
+      '{doctor} مختص في {specialty}. {experience} يعمل على تقديم استشارات طبية واضحة وخطة علاج مناسبة لكل مريض.',
+      {
+        'doctor': _doctorName(context),
+        'specialty': _specialty(context),
+        'experience': experienceText,
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Directionality(
-      textDirection: TextDirection.rtl,
+      textDirection: context.l10n.isArabic
+          ? TextDirection.rtl
+          : TextDirection.ltr,
       child: Scaffold(
         backgroundColor: NabadColors.background,
         bottomNavigationBar: _BookingBottomBar(
@@ -51,9 +75,12 @@ class DoctorProfileBookingScreen extends StatelessWidget {
                     children: [
                       _Header(onBack: () => Navigator.pop(context)),
                       const SizedBox(height: 20),
-                      _HeroDoctorCard(doctor: doctor, doctorName: _doctorName),
+                      _HeroDoctorCard(
+                        doctor: doctor,
+                        doctorName: _doctorName(context),
+                      ),
                       const SizedBox(height: 60),
-                      _AboutSection(text: _aboutText),
+                      _AboutSection(text: _aboutText(context)),
                       const SizedBox(height: 24),
                     ],
                   ),
@@ -88,11 +115,11 @@ class _Header extends StatelessWidget {
           icon: const Icon(Icons.arrow_back_rounded),
           color: NabadColors.primary,
         ),
-        const Expanded(
+        Expanded(
           child: Text(
-            'تفاصيل الطبيب',
+            context.tr('تفاصيل الطبيب'),
             textAlign: TextAlign.center,
-            style: TextStyle(
+            style: const TextStyle(
               color: NabadColors.deepTeal,
               fontSize: 24,
               fontWeight: FontWeight.w900,
@@ -168,7 +195,7 @@ class _HeroDoctorCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      doctor.specialization ?? 'طبيب مختص',
+                      doctor.specialization ?? context.tr('طبيب مختص'),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       textAlign: TextAlign.center,
@@ -190,11 +217,11 @@ class _HeroDoctorCard extends StatelessWidget {
           bottom: -48,
           child: Row(
             children: [
-              const Expanded(
+              Expanded(
                 child: _StatCard(
                   icon: Icons.groups_rounded,
                   value: '2k+',
-                  label: 'مريض',
+                  label: context.tr('مريض'),
                 ),
               ),
               const SizedBox(width: 14),
@@ -202,17 +229,17 @@ class _HeroDoctorCard extends StatelessWidget {
                 child: _StatCard(
                   icon: Icons.medical_services_outlined,
                   value: doctor.yearsOfExperience == null
-                      ? 'خبرة'
+                      ? context.tr('خبرة')
                       : '${doctor.yearsOfExperience}+',
-                  label: 'عام خبرة',
+                  label: context.tr('عام خبرة'),
                 ),
               ),
               const SizedBox(width: 14),
-              const Expanded(
+              Expanded(
                 child: _StatCard(
                   icon: Icons.star_border_rounded,
                   value: '4.9',
-                  label: 'تقييم',
+                  label: context.tr('تقييم'),
                 ),
               ),
             ],
@@ -359,7 +386,7 @@ class _AboutSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-        const _SectionTitle(title: 'نبذة عن الطبيب'),
+        _SectionTitle(title: context.tr('نبذة عن الطبيب')),
         const SizedBox(height: 12),
         Text(
           text,
@@ -423,7 +450,7 @@ class _BookingBottomBar extends StatelessWidget {
               child: ElevatedButton.icon(
                 onPressed: onBook,
                 icon: const Icon(Icons.calendar_today_outlined, size: 20),
-                label: const Text('حجز موعد الآن'),
+                label: Text(context.tr('حجز موعد الآن')),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: NabadColors.primary,
                   foregroundColor: Colors.white,
@@ -446,9 +473,9 @@ class _BookingBottomBar extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text(
-                  'سعر الاستشارة',
-                  style: TextStyle(
+                Text(
+                  context.tr('سعر الاستشارة'),
+                  style: const TextStyle(
                     color: NabadColors.mutedText,
                     fontSize: 12,
                     fontWeight: FontWeight.w800,

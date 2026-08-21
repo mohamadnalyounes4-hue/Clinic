@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:nabad/const/onboarding_model.dart';
 import 'package:nabad/core/router/app_router.dart';
+import 'package:nabad/core/localization/app_localizations.dart';
 
 class WelcomeInterface extends StatefulWidget {
   const WelcomeInterface({super.key});
@@ -21,24 +22,29 @@ class _WelcomeInterfaceState extends State<WelcomeInterface> {
   final PageController pageController = PageController();
   Timer? autoScrollTimer;
 
-  final List<OnboardingModel> screens = [
+  static const int _screenCount = 3;
+
+  List<OnboardingModel> _screens(BuildContext context) => [
     OnboardingModel(
       image: 'assets/images/ddd.jpg',
-      title: 'استشر أفضل الأطباء',
-      body:
-          'تواصل مع نخبة من الأطباء المتخصصين في كافة\nالمجالات الطبية بكل سهولة ويسر من هاتفك.',
+      title: context.tr('استشر أفضل الأطباء'),
+      body: context.tr(
+        'تواصل مع نخبة من الأطباء المتخصصين في كافة\nالمجالات الطبية بكل سهولة ويسر من هاتفك.',
+      ),
     ),
     OnboardingModel(
       image: 'assets/images/ترحيب 2.jpg',
-      title: 'احجز موعدك بضغطة زر',
-      body:
-          'وداعاً للانتظار، اختر الوقت والتاريخ المناسبين لك\nواحجز موعدك فوراً.',
+      title: context.tr('احجز موعدك بضغطة زر'),
+      body: context.tr(
+        'وداعاً للانتظار، اختر الوقت والتاريخ المناسبين لك\nواحجز موعدك فوراً.',
+      ),
     ),
     OnboardingModel(
       image: 'assets/images/ترحيب 3.jpg',
-      title: 'ملفك الطبي في جيبك',
-      body:
-          'تابع نتائج تحاليلك، وصفاتك الطبية، وتاريخك المرضي\nفي أي وقت ومن أي مكان.',
+      title: context.tr('ملفك الطبي في جيبك'),
+      body: context.tr(
+        'تابع نتائج تحاليلك، وصفاتك الطبية، وتاريخك المرضي\nفي أي وقت ومن أي مكان.',
+      ),
     ),
   ];
 
@@ -52,7 +58,7 @@ class _WelcomeInterfaceState extends State<WelcomeInterface> {
     autoScrollTimer = Timer.periodic(const Duration(seconds: 3), (_) {
       if (!mounted || !pageController.hasClients) return;
 
-      final int nextIndex = currentIndex == screens.length - 1
+      final int nextIndex = currentIndex == _screenCount - 1
           ? 0
           : currentIndex + 1;
 
@@ -94,8 +100,11 @@ class _WelcomeInterfaceState extends State<WelcomeInterface> {
 
   @override
   Widget build(BuildContext context) {
+    final screens = _screens(context);
     return Directionality(
-      textDirection: TextDirection.rtl,
+      textDirection: context.l10n.isArabic
+          ? TextDirection.rtl
+          : TextDirection.ltr,
       child: Scaffold(
         backgroundColor: backgroundColor,
         body: SafeArea(
@@ -224,8 +233,8 @@ class _WelcomeInterfaceState extends State<WelcomeInterface> {
                         ),
                         child: Text(
                           currentIndex == screens.length - 1
-                              ? 'ابدأ الآن'
-                              : 'التالي',
+                              ? context.tr('ابدأ الآن')
+                              : context.tr('التالي'),
                           style: const TextStyle(
                             fontSize: 18,
                             color: Colors.white,

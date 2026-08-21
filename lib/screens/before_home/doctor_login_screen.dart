@@ -4,6 +4,7 @@ import 'package:nabad/Cubits/cubits/user_cubit.dart';
 import 'package:nabad/Cubits/states/user_state.dart';
 import 'package:nabad/core/router/app_router.dart';
 import 'package:nabad/core/theme/nabad_colors.dart';
+import 'package:nabad/core/localization/app_localizations.dart';
 import 'package:nabad/widgets/patient_login/country_code.dart';
 import 'package:nabad/widgets/patient_login/patient_login_card.dart';
 import 'package:nabad/widgets/soft_ring.dart';
@@ -43,15 +44,19 @@ class _DoctorLoginScreenState extends State<DoctorLoginScreen> {
 
   String? _validatePhone(String? value) {
     final String phone = value?.trim() ?? '';
-    if (phone.isEmpty) return 'أدخل رقم الهاتف';
-    if (phone.length != 10) return 'رقم الهاتف يجب أن يكون 10 أرقام';
+    if (phone.isEmpty) return context.tr('أدخل رقم الهاتف');
+    if (phone.length != 10) {
+      return context.tr('رقم الهاتف يجب أن يكون 10 أرقام');
+    }
     return null;
   }
 
   String? _validatePassword(String? value) {
     final String password = value ?? '';
-    if (password.isEmpty) return 'أدخل كلمة المرور';
-    if (password.length < 6) return 'كلمة المرور يجب أن تكون 6 أحرف على الأقل';
+    if (password.isEmpty) return context.tr('أدخل كلمة المرور');
+    if (password.length < 6) {
+      return context.tr('كلمة المرور يجب أن تكون 6 أحرف على الأقل');
+    }
     return null;
   }
 
@@ -69,8 +74,10 @@ class _DoctorLoginScreenState extends State<DoctorLoginScreen> {
         if (state is LoginSuccessPatient) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Text(
-                'هذا الحساب مسجل كمريض، يرجى تسجيل الدخول من صفحة المريض',
+              content: Text(
+                context.tr(
+                  'هذا الحساب مسجل كمريض، يرجى تسجيل الدخول من صفحة المريض',
+                ),
               ),
               backgroundColor: Colors.orange.shade700,
               behavior: SnackBarBehavior.floating,
@@ -79,7 +86,7 @@ class _DoctorLoginScreenState extends State<DoctorLoginScreen> {
         } else if (state is LoginError) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(state.message),
+              content: Text(context.tr(state.message)),
               backgroundColor: Colors.red.shade700,
               behavior: SnackBarBehavior.floating,
             ),
@@ -87,7 +94,9 @@ class _DoctorLoginScreenState extends State<DoctorLoginScreen> {
         }
       },
       child: Directionality(
-        textDirection: TextDirection.rtl,
+        textDirection: context.l10n.isArabic
+            ? TextDirection.rtl
+            : TextDirection.ltr,
         child: Scaffold(
           backgroundColor: NabadColors.background,
           body: SafeArea(
@@ -188,7 +197,7 @@ class _DoctorLoginHero extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'أهلاً بعودتك',
+                  context.tr('أهلاً بعودتك'),
                   style: TextStyle(
                     color: Colors.white.withAlpha(220),
                     fontSize: 15,
@@ -196,9 +205,9 @@ class _DoctorLoginHero extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 8),
-                const Text(
-                  'تسجيل دخول الطبيب',
-                  style: TextStyle(
+                Text(
+                  context.tr('تسجيل دخول الطبيب'),
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 25,
                     fontWeight: FontWeight.w900,
@@ -207,7 +216,7 @@ class _DoctorLoginHero extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'ادخل إلى مواعيدك وملفات المرضى ضمن مركز العيادات.',
+                  context.tr('ادخل إلى مواعيدك وملفات مرضاك بأمان.'),
                   style: TextStyle(
                     color: Colors.white.withAlpha(215),
                     fontSize: 13.5,

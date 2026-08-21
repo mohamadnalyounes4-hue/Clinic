@@ -5,6 +5,7 @@ import 'package:nabad/Cubits/cubits/user_cubit.dart';
 import 'package:nabad/Cubits/states/user_state.dart';
 import 'package:nabad/core/router/app_router.dart';
 import 'package:nabad/core/theme/nabad_colors.dart';
+import 'package:nabad/core/localization/app_localizations.dart';
 import 'package:nabad/widgets/soft_ring.dart';
 
 class OtpCodeScreen extends StatefulWidget {
@@ -17,7 +18,10 @@ class OtpCodeScreen extends StatefulWidget {
 }
 
 class _OtpCodeScreenState extends State<OtpCodeScreen> {
-  final List<TextEditingController> _controllers = List.generate(6, (_) => TextEditingController());
+  final List<TextEditingController> _controllers = List.generate(
+    6,
+    (_) => TextEditingController(),
+  );
   final List<FocusNode> _focusNodes = List.generate(6, (_) => FocusNode());
 
   @override
@@ -32,15 +36,14 @@ class _OtpCodeScreenState extends State<OtpCodeScreen> {
   void _verifyCode() {
     if (_code.length != 6) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('أدخل رمز التحقق المؤلف من 6 أرقام')),
+        SnackBar(
+          content: Text(context.tr('أدخل رمز التحقق المؤلف من 6 أرقام')),
+        ),
       );
       return;
     }
 
-    context.read<UserCubit>().verifyOtp(
-          email: widget.email ?? '',
-          code: _code,
-        );
+    context.read<UserCubit>().verifyOtp(email: widget.email ?? '', code: _code);
   }
 
   void _resendCode() {
@@ -67,8 +70,8 @@ class _OtpCodeScreenState extends State<OtpCodeScreen> {
           // (اللي محمية بـ Authorization) رح تشتغل صح. التوجيه المباشر
           // لـ complete_profile هون كان بيسبب 401 لأنو ما في Token أصلاً.
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('تم تأكيد بريدك، سجّل دخولك للمتابعة'),
+            SnackBar(
+              content: Text(context.tr('تم تأكيد بريدك، سجّل دخولك للمتابعة')),
               behavior: SnackBarBehavior.floating,
             ),
           );
@@ -80,22 +83,22 @@ class _OtpCodeScreenState extends State<OtpCodeScreen> {
         } else if (state is VerifyOtpError) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(state.message),
+              content: Text(context.tr(state.message)),
               backgroundColor: Colors.red.shade700,
               behavior: SnackBarBehavior.floating,
             ),
           );
         } else if (state is ResendOtpSuccess) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('تم إرسال الرمز مجدداً'),
+            SnackBar(
+              content: Text(context.tr('تم إرسال الرمز مجدداً')),
               behavior: SnackBarBehavior.floating,
             ),
           );
         } else if (state is ResendOtpError) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(state.message),
+              content: Text(context.tr(state.message)),
               backgroundColor: Colors.red.shade700,
               behavior: SnackBarBehavior.floating,
             ),
@@ -103,13 +106,19 @@ class _OtpCodeScreenState extends State<OtpCodeScreen> {
         }
       },
       child: Directionality(
-        textDirection: TextDirection.rtl,
+        textDirection: context.l10n.isArabic
+            ? TextDirection.rtl
+            : TextDirection.ltr,
         child: Scaffold(
           backgroundColor: NabadColors.background,
           body: SafeArea(
             child: Stack(
               children: [
-                const Positioned(top: 84, right: -70, child: SoftRing(size: 220)),
+                const Positioned(
+                  top: 84,
+                  right: -70,
+                  child: SoftRing(size: 220),
+                ),
                 Positioned(
                   left: -42,
                   bottom: 92,
@@ -135,23 +144,30 @@ class _OtpCodeScreenState extends State<OtpCodeScreen> {
                         return SingleChildScrollView(
                           padding: const EdgeInsets.fromLTRB(22, 18, 22, 28),
                           child: ConstrainedBox(
-                            constraints: BoxConstraints(minHeight: constraints.maxHeight - 46),
+                            constraints: BoxConstraints(
+                              minHeight: constraints.maxHeight - 46,
+                            ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
                                 Align(
                                   alignment: Alignment.centerLeft,
                                   child: IconButton.filled(
-                                    onPressed: () => Navigator.maybePop(context),
+                                    onPressed: () =>
+                                        Navigator.maybePop(context),
                                     style: IconButton.styleFrom(
-                                      backgroundColor: Colors.white.withAlpha(220),
+                                      backgroundColor: Colors.white.withAlpha(
+                                        220,
+                                      ),
                                       foregroundColor: NabadColors.primary,
                                       fixedSize: const Size(46, 46),
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(16),
                                       ),
                                     ),
-                                    icon: const Icon(Icons.arrow_forward_rounded),
+                                    icon: const Icon(
+                                      Icons.arrow_forward_rounded,
+                                    ),
                                   ),
                                 ),
                                 SizedBox(height: constraints.maxHeight * 0.12),
@@ -160,25 +176,34 @@ class _OtpCodeScreenState extends State<OtpCodeScreen> {
                                   decoration: BoxDecoration(
                                     color: Colors.white.withAlpha(238),
                                     borderRadius: BorderRadius.circular(30),
-                                    border: Border.all(color: Colors.white.withAlpha(230)),
+                                    border: Border.all(
+                                      color: Colors.white.withAlpha(230),
+                                    ),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: NabadColors.primary.withAlpha(20),
+                                        color: NabadColors.primary.withAlpha(
+                                          20,
+                                        ),
                                         blurRadius: 28,
                                         offset: const Offset(0, 16),
                                       ),
                                     ],
                                   ),
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
                                     children: [
                                       Container(
                                         width: 76,
                                         height: 76,
                                         alignment: Alignment.center,
                                         decoration: BoxDecoration(
-                                          color: NabadColors.primary.withAlpha(24),
-                                          borderRadius: BorderRadius.circular(24),
+                                          color: NabadColors.primary.withAlpha(
+                                            24,
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            24,
+                                          ),
                                         ),
                                         child: const Icon(
                                           Icons.mark_email_read_rounded,
@@ -187,9 +212,9 @@ class _OtpCodeScreenState extends State<OtpCodeScreen> {
                                         ),
                                       ),
                                       const SizedBox(height: 22),
-                                      const Text(
-                                        'رمز التحقق',
-                                        style: TextStyle(
+                                      Text(
+                                        context.tr('رمز التحقق'),
+                                        style: const TextStyle(
                                           color: NabadColors.darkText,
                                           fontSize: 27,
                                           fontWeight: FontWeight.w900,
@@ -199,8 +224,13 @@ class _OtpCodeScreenState extends State<OtpCodeScreen> {
                                       const SizedBox(height: 10),
                                       Text(
                                         widget.email == null
-                                            ? 'أدخل رمز التحقق المرسل إليك.'
-                                            : 'أدخل الرمز المرسل إلى ${widget.email}.',
+                                            ? context.tr(
+                                                'أدخل رمز التحقق المرسل إليك.',
+                                              )
+                                            : context.tr(
+                                                'أدخل الرمز المرسل إلى {email}.',
+                                                {'email': widget.email},
+                                              ),
                                         style: const TextStyle(
                                           color: NabadColors.mutedText,
                                           fontSize: 14.5,
@@ -215,12 +245,18 @@ class _OtpCodeScreenState extends State<OtpCodeScreen> {
                                           6,
                                           (index) => Expanded(
                                             child: Padding(
-                                              padding: EdgeInsets.only(left: index == 5 ? 0 : 7),
+                                              padding: EdgeInsets.only(
+                                                left: index == 5 ? 0 : 7,
+                                              ),
                                               child: _OtpDigitField(
                                                 controller: _controllers[index],
                                                 focusNode: _focusNodes[index],
                                                 autofocus: index == 0,
-                                                onChanged: (value) => _onCodeChanged(value, index),
+                                                onChanged: (value) =>
+                                                    _onCodeChanged(
+                                                      value,
+                                                      index,
+                                                    ),
                                               ),
                                             ),
                                           ),
@@ -230,48 +266,63 @@ class _OtpCodeScreenState extends State<OtpCodeScreen> {
                                       SizedBox(
                                         height: 56,
                                         child: ElevatedButton(
-                                          onPressed: isVerifying ? null : _verifyCode,
+                                          onPressed: isVerifying
+                                              ? null
+                                              : _verifyCode,
                                           style: ElevatedButton.styleFrom(
-                                            backgroundColor: NabadColors.primary,
+                                            backgroundColor:
+                                                NabadColors.primary,
                                             foregroundColor: Colors.white,
                                             elevation: 0,
                                             shape: RoundedRectangleBorder(
-                                              borderRadius: BorderRadius.circular(20),
+                                              borderRadius:
+                                                  BorderRadius.circular(20),
                                             ),
                                           ),
                                           child: isVerifying
                                               ? const SizedBox(
                                                   width: 22,
                                                   height: 22,
-                                                  child: CircularProgressIndicator(
-                                                    color: Colors.white,
-                                                    strokeWidth: 2.5,
-                                                  ),
+                                                  child:
+                                                      CircularProgressIndicator(
+                                                        color: Colors.white,
+                                                        strokeWidth: 2.5,
+                                                      ),
                                                 )
-                                              : const Text(
-                                                  'تأكيد الرمز',
-                                                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+                                              : Text(
+                                                  context.tr('تأكيد الرمز'),
+                                                  style: const TextStyle(
+                                                    fontSize: 16,
+                                                    fontWeight: FontWeight.w900,
+                                                  ),
                                                 ),
                                         ),
                                       ),
                                       const SizedBox(height: 14),
                                       Wrap(
                                         alignment: WrapAlignment.center,
-                                        crossAxisAlignment: WrapCrossAlignment.center,
+                                        crossAxisAlignment:
+                                            WrapCrossAlignment.center,
                                         children: [
-                                          const Text(
-                                            'ألم تتلقى الرمز؟',
-                                            style: TextStyle(
+                                          Text(
+                                            context.tr('ألم تتلقى الرمز؟'),
+                                            style: const TextStyle(
                                               color: NabadColors.mutedText,
                                               fontSize: 14,
                                               fontWeight: FontWeight.w700,
                                             ),
                                           ),
                                           TextButton(
-                                            onPressed: isResending ? null : _resendCode,
+                                            onPressed: isResending
+                                                ? null
+                                                : _resendCode,
                                             style: TextButton.styleFrom(
-                                              foregroundColor: NabadColors.primary,
-                                              padding: const EdgeInsets.symmetric(horizontal: 6),
+                                              foregroundColor:
+                                                  NabadColors.primary,
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 6,
+                                                  ),
                                               textStyle: const TextStyle(
                                                 fontSize: 14.5,
                                                 fontWeight: FontWeight.w900,
@@ -281,9 +332,14 @@ class _OtpCodeScreenState extends State<OtpCodeScreen> {
                                                 ? const SizedBox(
                                                     width: 16,
                                                     height: 16,
-                                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                                    child:
+                                                        CircularProgressIndicator(
+                                                          strokeWidth: 2,
+                                                        ),
                                                   )
-                                                : const Text('أرسل الرمز'),
+                                                : Text(
+                                                    context.tr('أرسل الرمز'),
+                                                  ),
                                           ),
                                         ],
                                       ),

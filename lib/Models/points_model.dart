@@ -1,12 +1,39 @@
+import 'dart:math' as math;
+
+/// The loyalty contract shared by booking, points, and wallet UI.
+///
+/// Awarding points and moving money must remain server-side and atomic. The
+/// client uses these constants to present the policy and to reject a stale or
+/// inconsistent server preview before a discounted booking is submitted.
+abstract final class LoyaltyPolicy {
+  static const int pointsAwardedPerAppointment = 20;
+  static const int pointsRequiredForDiscount = 40;
+  static const double discountPercentage = 30;
+
+  static bool canRedeem(int pointsBalance) =>
+      pointsBalance >= pointsRequiredForDiscount;
+
+  static double discountAmount(double originalPrice) =>
+      _roundMoney(originalPrice * discountPercentage / 100);
+
+  static double finalPrice(double originalPrice) =>
+      _roundMoney(math.max(0, originalPrice - discountAmount(originalPrice)));
+
+  static bool moneyEquals(double first, double second) =>
+      (first - second).abs() < 0.01;
+
+  static double _roundMoney(double value) =>
+      (value * 100).roundToDouble() / 100;
+}
+
 class PointsSummaryModel {
   final int pointsBalance;
   final bool loyaltyActive;
   final String redemptionRateLabel; // النص الخام من الباك للعرض لو حبينا
 
-  // ── القيم المستخرجة من النص عشان نحسب الخصم بدون ما نفترض أرقام ثابتة ──
-  final int pointsPerUnit; // كل كام نقطة = وحدة خصم (افتراضي 100)
-  final double discountPerUnit; // % الخصم لكل وحدة (افتراضي 10%)
-  final double maxDiscountPercent; // أقصى نسبة خصم (افتراضي 50%)
+  final int pointsPerUnit;
+  final double discountPerUnit;
+  final double maxDiscountPercent;
 
   const PointsSummaryModel({
     required this.pointsBalance,
@@ -22,47 +49,26 @@ class PointsSummaryModel {
     final settings = (data['settings'] as Map?)?.cast<String, dynamic>() ?? {};
     final rateLabel = (settings['redemption_rate'] ?? '').toString();
 
-    // القيم الافتراضية المتفق عليها حاليًا: كل 100 نقطة = 10% خصم، حد أقصى 50%.
-    // بنحاول نستخرجها من النص الراجع من الباك عشان لو اتغيّر الإعداد هناك
-    // الواجهة تتحدث لوحدها من غير تعديل كود.
-    int pointsPerUnit = 100;
-    double discountPerUnit = 10.0;
-    double maxDiscountPercent = 50.0;
-
-    final match = RegExp(
-      r'(\d+)\s*points?\s*=\s*([\d.]+)\s*%.*?max\s*([\d.]+)\s*%',
-      caseSensitive: false,
-    ).firstMatch(rateLabel);
-
-    if (match != null) {
-      pointsPerUnit = int.tryParse(match.group(1) ?? '') ?? pointsPerUnit;
-      discountPerUnit =
-          double.tryParse(match.group(2) ?? '') ?? discountPerUnit;
-      maxDiscountPercent =
-          double.tryParse(match.group(3) ?? '') ?? maxDiscountPercent;
-    }
-
     return PointsSummaryModel(
       pointsBalance: _toInt(data['points_balance']),
       loyaltyActive: data['loyalty_active'] == true,
       redemptionRateLabel: rateLabel,
-      pointsPerUnit: pointsPerUnit <= 0 ? 100 : pointsPerUnit,
-      discountPerUnit: discountPerUnit,
-      maxDiscountPercent: maxDiscountPercent,
+      pointsPerUnit: LoyaltyPolicy.pointsRequiredForDiscount,
+      discountPerUnit: LoyaltyPolicy.discountPercentage,
+      maxDiscountPercent: LoyaltyPolicy.discountPercentage,
     );
   }
 
   /// نسبة الخصم (%) مقابل عدد نقاط معيّن، بحد أقصى [maxDiscountPercent].
   double discountPercentFor(int pointsToRedeem) {
-    if (pointsToRedeem <= 0 || pointsPerUnit <= 0) return 0;
-    final raw = (pointsToRedeem / pointsPerUnit) * discountPerUnit;
-    return raw > maxDiscountPercent ? maxDiscountPercent : raw;
+    return pointsToRedeem == LoyaltyPolicy.pointsRequiredForDiscount
+        ? LoyaltyPolicy.discountPercentage
+        : 0;
   }
 
   /// أقصى عدد نقاط له فايدة فعلية (بعده الخصم بيوصل للحد الأقصى وما بيزيد).
   int get pointsForMaxDiscount {
-    if (discountPerUnit <= 0) return 0;
-    return ((maxDiscountPercent / discountPerUnit) * pointsPerUnit).ceil();
+    return LoyaltyPolicy.pointsRequiredForDiscount;
   }
 }
 
@@ -149,6 +155,25 @@ class PointsRedemptionPreviewModel {
       discountAmount: _toDouble(data['discount_amount']),
       finalPrice: _toDouble(data['final_price']),
     );
+  }
+
+  bool matchesLoyaltyPolicy({required double consultationFee}) {
+    return loyaltyActive &&
+        patientPointsBalance >= LoyaltyPolicy.pointsRequiredForDiscount &&
+        pointsRedeemed == LoyaltyPolicy.pointsRequiredForDiscount &&
+        LoyaltyPolicy.moneyEquals(
+          discountPercentage,
+          LoyaltyPolicy.discountPercentage,
+        ) &&
+        LoyaltyPolicy.moneyEquals(originalPrice, consultationFee) &&
+        LoyaltyPolicy.moneyEquals(
+          discountAmount,
+          LoyaltyPolicy.discountAmount(consultationFee),
+        ) &&
+        LoyaltyPolicy.moneyEquals(
+          finalPrice,
+          LoyaltyPolicy.finalPrice(consultationFee),
+        );
   }
 }
 

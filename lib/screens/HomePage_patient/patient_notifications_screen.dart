@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:nabad/Cubits/cubits/patient_notification_cubit.dart';
 import 'package:nabad/Cubits/states/patient_notification_state.dart';
 import 'package:nabad/Models/patient_notification_model.dart';
+import 'package:nabad/core/localization/app_localizations.dart';
 import 'package:nabad/core/theme/nabad_colors.dart';
 
 class PatientNotificationsScreen extends StatefulWidget {
@@ -41,13 +42,15 @@ class _PatientNotificationsScreenState
   @override
   Widget build(BuildContext context) {
     return Directionality(
-      textDirection: TextDirection.rtl,
+      textDirection: context.l10n.isArabic
+          ? TextDirection.rtl
+          : TextDirection.ltr,
       child: Scaffold(
         backgroundColor: NabadColors.background,
         appBar: AppBar(
-          title: const Text(
-            'الإشعارات',
-            style: TextStyle(fontWeight: FontWeight.w900),
+          title: Text(
+            context.tr('الإشعارات'),
+            style: const TextStyle(fontWeight: FontWeight.w900),
           ),
           centerTitle: true,
           backgroundColor: Colors.white,
@@ -64,9 +67,9 @@ class _PatientNotificationsScreenState
                       : () => context
                             .read<PatientNotificationCubit>()
                             .markAllAsRead(),
-                  child: const Text(
-                    'قراءة الكل',
-                    style: TextStyle(fontWeight: FontWeight.w800),
+                  child: Text(
+                    context.tr('قراءة الكل'),
+                    style: const TextStyle(fontWeight: FontWeight.w800),
                   ),
                 );
               },
@@ -78,9 +81,9 @@ class _PatientNotificationsScreenState
               previous.errorMessage != current.errorMessage &&
               current.errorMessage != null,
           listener: (context, state) {
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(SnackBar(content: Text(state.errorMessage!)));
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(context.tr(state.errorMessage!))),
+            );
             context.read<PatientNotificationCubit>().clearError();
           },
           builder: (context, state) {
@@ -92,18 +95,20 @@ class _PatientNotificationsScreenState
                 state.notifications.isEmpty) {
               return _MessageView(
                 icon: Icons.cloud_off_rounded,
-                title: state.errorMessage ?? 'تعذر تحميل الإشعارات',
-                actionLabel: 'إعادة المحاولة',
+                title: state.errorMessage ?? context.tr('تعذر تحميل الإشعارات'),
+                actionLabel: context.tr('إعادة المحاولة'),
                 onAction: () => context
                     .read<PatientNotificationCubit>()
                     .loadNotifications(refresh: true),
               );
             }
             if (state.notifications.isEmpty) {
-              return const _MessageView(
+              return _MessageView(
                 icon: Icons.notifications_none_rounded,
-                title: 'لا توجد إشعارات حتى الآن',
-                subtitle: 'ستظهر هنا تحديثات مواعيدك ووصفاتك ومدفوعاتك.',
+                title: context.tr('لا توجد إشعارات حتى الآن'),
+                subtitle: context.tr(
+                  'ستظهر هنا تحديثات مواعيدك ووصفاتك ومدفوعاتك.',
+                ),
               );
             }
 
@@ -225,7 +230,7 @@ class _NotificationCard extends StatelessWidget {
                     ],
                     const SizedBox(height: 8),
                     Text(
-                      _formatTime(notification.createdAt),
+                      _formatTime(context, notification.createdAt),
                       style: TextStyle(
                         color: unread
                             ? NabadColors.primary
@@ -267,15 +272,18 @@ class _NotificationCard extends StatelessWidget {
     return NabadColors.primary;
   }
 
-  static String _formatTime(DateTime? date) {
+  static String _formatTime(BuildContext context, DateTime? date) {
     if (date == null) return '';
     final local = date.toLocal();
     final difference = DateTime.now().difference(local);
     if (!difference.isNegative) {
-      if (difference.inMinutes < 1) return 'الآن';
-      if (difference.inMinutes < 60) return 'منذ ${difference.inMinutes} دقيقة';
-      if (difference.inHours < 24) return 'منذ ${difference.inHours} ساعة';
-      if (difference.inDays < 7) return 'منذ ${difference.inDays} يوم';
+      if (difference.inMinutes < 1) return context.tr('الآن');
+      if (difference.inMinutes < 60)
+        return context.tr('منذ {count} دقيقة', {'count': difference.inMinutes});
+      if (difference.inHours < 24)
+        return context.tr('منذ {count} ساعة', {'count': difference.inHours});
+      if (difference.inDays < 7)
+        return context.tr('منذ {count} يوم', {'count': difference.inDays});
     }
     final day = local.day.toString().padLeft(2, '0');
     final month = local.month.toString().padLeft(2, '0');

@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:nabad/Cubits/cubits/appointment_cubit.dart';
 import 'package:nabad/Cubits/cubits/medicine_reminder_cubit.dart';
 import 'package:nabad/Cubits/cubits/department_cubit.dart';
@@ -13,11 +14,13 @@ import 'package:nabad/Cubits/cubits/points_history_cubit.dart';
 import 'package:nabad/Cubits/cubits/user_cubit.dart';
 import 'package:nabad/Cubits/cubits/wallet_cubit.dart';
 import 'package:nabad/Cubits/cubits/theme_cubit.dart';
+import 'package:nabad/Cubits/cubits/language_cubit.dart';
 import 'package:nabad/Repositories/user_repository.dart';
 import 'package:nabad/core/Api/dio_consumer.dart';
 import 'package:nabad/core/Api/end_points.dart';
 import 'package:nabad/core/Cache/cache_helper.dart';
 import 'package:nabad/core/notifications/medicine_reminder_service.dart';
+import 'package:nabad/core/localization/app_localizations.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/nabad_theme.dart';
 
@@ -70,15 +73,26 @@ class NabadApp extends StatelessWidget {
         BlocProvider(create: (_) => PointsHistoryCubit(api: api)),
         BlocProvider(create: (_) => WalletCubit(api: api)),
         BlocProvider(create: (_) => ThemeCubit()),
+        BlocProvider(create: (_) => LanguageCubit()),
       ],
-      child: BlocBuilder<ThemeCubit, ThemeMode>(
-        builder: (context, themeMode) => MaterialApp(
-          debugShowCheckedModeBanner: false,
-          theme: NabadTheme.light,
-          darkTheme: NabadTheme.dark,
-          themeMode: themeMode,
-          initialRoute: initialRoute,
-          onGenerateRoute: AppRouter.generateRoute,
+      child: BlocBuilder<LanguageCubit, Locale>(
+        builder: (context, locale) => BlocBuilder<ThemeCubit, ThemeMode>(
+          builder: (context, themeMode) => MaterialApp(
+            debugShowCheckedModeBanner: false,
+            theme: NabadTheme.light,
+            darkTheme: NabadTheme.dark,
+            themeMode: themeMode,
+            locale: locale,
+            supportedLocales: AppLocalizations.supportedLocales,
+            localizationsDelegates: const [
+              AppLocalizations.delegate,
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            initialRoute: initialRoute,
+            onGenerateRoute: AppRouter.generateRoute,
+          ),
         ),
       ),
     );

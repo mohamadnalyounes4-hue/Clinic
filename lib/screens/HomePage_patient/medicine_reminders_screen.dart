@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:nabad/Cubits/cubits/medicine_reminder_cubit.dart';
 import 'package:nabad/Cubits/states/medicine_reminder_state.dart';
 import 'package:nabad/Models/medicine_reminder_model.dart';
+import 'package:nabad/core/localization/app_localizations.dart';
 import 'package:nabad/core/theme/nabad_colors.dart';
 
 class MedicineRemindersScreen extends StatefulWidget {
@@ -23,13 +24,15 @@ class _MedicineRemindersScreenState extends State<MedicineRemindersScreen> {
   @override
   Widget build(BuildContext context) {
     return Directionality(
-      textDirection: TextDirection.rtl,
+      textDirection: context.l10n.isArabic
+          ? TextDirection.rtl
+          : TextDirection.ltr,
       child: Scaffold(
         backgroundColor: NabadColors.background,
         appBar: AppBar(
-          title: const Text(
-            'تذكيرات الأدوية',
-            style: TextStyle(fontWeight: FontWeight.w900),
+          title: Text(
+            context.tr('تذكيرات الأدوية'),
+            style: const TextStyle(fontWeight: FontWeight.w900),
           ),
           centerTitle: true,
           backgroundColor: Colors.white,
@@ -41,9 +44,9 @@ class _MedicineRemindersScreenState extends State<MedicineRemindersScreen> {
           backgroundColor: NabadColors.primary,
           foregroundColor: Colors.white,
           icon: const Icon(Icons.add_rounded),
-          label: const Text(
-            'تذكير جديد',
-            style: TextStyle(fontWeight: FontWeight.w800),
+          label: Text(
+            context.tr('تذكير جديد'),
+            style: const TextStyle(fontWeight: FontWeight.w800),
           ),
         ),
         body: BlocConsumer<MedicineReminderCubit, MedicineReminderState>(
@@ -53,7 +56,9 @@ class _MedicineRemindersScreenState extends State<MedicineRemindersScreen> {
           listener: (context, state) {
             ScaffoldMessenger.of(
               context,
-            ).showSnackBar(SnackBar(content: Text(state.errorMessage!)));
+            ).showSnackBar(
+              SnackBar(content: Text(context.tr(state.errorMessage!))),
+            );
             context.read<MedicineReminderCubit>().clearError();
           },
           builder: (context, state) {
@@ -104,17 +109,21 @@ class _MedicineRemindersScreenState extends State<MedicineRemindersScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('حذف التذكير؟'),
-        content: Text('لن يصلك تنبيه ${reminder.medicineName} بعد الحذف.'),
+        title: Text(context.tr('حذف التذكير؟')),
+        content: Text(
+          context.tr('لن يصلك تنبيه {name} بعد الحذف.', {
+            'name': reminder.medicineName,
+          }),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('تراجع'),
+            child: Text(context.tr('تراجع')),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(dialogContext, true),
             style: FilledButton.styleFrom(backgroundColor: Colors.red.shade700),
-            child: const Text('حذف'),
+            child: Text(context.tr('حذف')),
           ),
         ],
       ),
@@ -209,7 +218,7 @@ class _ReminderCard extends StatelessWidget {
                         ),
                         const SizedBox(width: 5),
                         Text(
-                          '${reminder.formattedTime} • يومياً',
+                          '${reminder.formattedTime} • ${context.tr('يومياً')}',
                           style: const TextStyle(
                             color: NabadColors.primary,
                             fontSize: 12,
@@ -226,14 +235,20 @@ class _ReminderCard extends StatelessWidget {
               children: [
                 Switch.adaptive(value: reminder.enabled, onChanged: onToggle),
                 PopupMenuButton<String>(
-                  tooltip: 'خيارات',
+                  tooltip: context.tr('خيارات'),
                   onSelected: (value) {
                     if (value == 'edit') onEdit();
                     if (value == 'delete') onDelete();
                   },
-                  itemBuilder: (_) => const [
-                    PopupMenuItem(value: 'edit', child: Text('تعديل')),
-                    PopupMenuItem(value: 'delete', child: Text('حذف')),
+                  itemBuilder: (_) => [
+                    PopupMenuItem(
+                      value: 'edit',
+                      child: Text(context.tr('تعديل')),
+                    ),
+                    PopupMenuItem(
+                      value: 'delete',
+                      child: Text(context.tr('حذف')),
+                    ),
                   ],
                   icon: const Icon(
                     Icons.more_horiz_rounded,
@@ -303,9 +318,11 @@ class _ReminderFormState extends State<_ReminderForm> {
                   const Center(child: _SheetHandle()),
                   const SizedBox(height: 18),
                   Text(
-                    widget.reminder == null
-                        ? 'إضافة تذكير دواء'
-                        : 'تعديل التذكير',
+                    context.tr(
+                      widget.reminder == null
+                          ? 'إضافة تذكير دواء'
+                          : 'تعديل التذكير',
+                    ),
                     style: const TextStyle(
                       color: NabadColors.darkText,
                       fontSize: 20,
@@ -317,20 +334,20 @@ class _ReminderFormState extends State<_ReminderForm> {
                     controller: _nameController,
                     textInputAction: TextInputAction.next,
                     decoration: _inputDecoration(
-                      label: 'اسم الدواء',
+                      label: context.tr('اسم الدواء'),
                       icon: Icons.medication_outlined,
                     ),
                     validator: (value) => value == null || value.trim().isEmpty
-                        ? 'أدخل اسم الدواء'
+                        ? context.tr('أدخل اسم الدواء')
                         : null,
                   ),
                   const SizedBox(height: 13),
                   TextFormField(
                     controller: _dosageController,
                     decoration: _inputDecoration(
-                      label: 'الجرعة (اختياري)',
+                      label: context.tr('الجرعة (اختياري)'),
                       icon: Icons.medical_information_outlined,
-                      hint: 'مثال: حبة واحدة بعد الطعام',
+                      hint: context.tr('مثال: حبة واحدة بعد الطعام'),
                     ),
                   ),
                   const SizedBox(height: 13),
@@ -339,7 +356,7 @@ class _ReminderFormState extends State<_ReminderForm> {
                     borderRadius: BorderRadius.circular(16),
                     child: InputDecorator(
                       decoration: _inputDecoration(
-                        label: 'وقت التذكير',
+                        label: context.tr('وقت التذكير'),
                         icon: Icons.schedule_rounded,
                       ),
                       child: Text(
@@ -353,7 +370,7 @@ class _ReminderFormState extends State<_ReminderForm> {
                     ),
                   ),
                   const SizedBox(height: 10),
-                  const Row(
+                  Row(
                     children: [
                       Icon(
                         Icons.repeat_rounded,
@@ -362,8 +379,8 @@ class _ReminderFormState extends State<_ReminderForm> {
                       ),
                       SizedBox(width: 7),
                       Text(
-                        'سيتكرر التذكير يومياً في الوقت المحدد',
-                        style: TextStyle(
+                        context.tr('سيتكرر التذكير يومياً في الوقت المحدد'),
+                        style: const TextStyle(
                           color: NabadColors.mutedText,
                           fontSize: 12,
                         ),
@@ -393,7 +410,11 @@ class _ReminderFormState extends State<_ReminderForm> {
                             )
                           : const Icon(Icons.notifications_active_outlined),
                       label: Text(
-                        widget.reminder == null ? 'حفظ التذكير' : 'حفظ التعديل',
+                        context.tr(
+                          widget.reminder == null
+                              ? 'حفظ التذكير'
+                              : 'حفظ التعديل',
+                        ),
                         style: const TextStyle(fontWeight: FontWeight.w900),
                       ),
                     ),
@@ -502,25 +523,25 @@ class _EmptyState extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 18),
-            const Text(
-              'لا توجد تذكيرات أدوية',
-              style: TextStyle(
+            Text(
+              context.tr('لا توجد تذكيرات أدوية'),
+              style: const TextStyle(
                 color: NabadColors.darkText,
                 fontSize: 18,
                 fontWeight: FontWeight.w900,
               ),
             ),
             const SizedBox(height: 7),
-            const Text(
-              'أضف دواءً ووقت تناوله ليصلك تنبيه يومي على جهازك.',
+            Text(
+              context.tr('أضف دواءً ووقت تناوله ليصلك تنبيه يومي على جهازك.'),
               textAlign: TextAlign.center,
-              style: TextStyle(color: NabadColors.mutedText, height: 1.5),
+              style: const TextStyle(color: NabadColors.mutedText, height: 1.5),
             ),
             const SizedBox(height: 18),
             FilledButton.icon(
               onPressed: onAdd,
               icon: const Icon(Icons.add_rounded),
-              label: const Text('إضافة أول تذكير'),
+              label: Text(context.tr('إضافة أول تذكير')),
             ),
           ],
         ),

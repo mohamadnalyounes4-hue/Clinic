@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:nabad/Cubits/cubits/wallet_cubit.dart';
 import 'package:nabad/Cubits/states/wallet_state.dart';
 import 'package:nabad/Models/wallet_model.dart';
+import 'package:nabad/core/localization/app_localizations.dart';
 import 'package:nabad/core/theme/nabad_colors.dart';
 
 class WalletScreen extends StatefulWidget {
@@ -32,26 +33,29 @@ class _WalletScreenState extends State<WalletScreen> {
     showDialog(
       context: context,
       builder: (_) => Directionality(
-        textDirection: TextDirection.rtl,
+        textDirection: context.l10n.isArabic
+            ? TextDirection.rtl
+            : TextDirection.ltr,
         child: AlertDialog(
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
-          title: const Text(
-            'شحن المحفظة',
-            style: TextStyle(fontWeight: FontWeight.w800),
+          title: Text(
+            context.tr('شحن المحفظة'),
+            style: const TextStyle(fontWeight: FontWeight.w800),
           ),
-          content: const Text(
-            'شحن المحفظة متاح حاليًا من خلال العيادة مباشرة. تواصل مع '
-            'الاستقبال لإضافة رصيد لمحفظتك.',
-            style: TextStyle(color: NabadColors.mutedText, height: 1.6),
+          content: Text(
+            context.tr(
+              'شحن المحفظة متاح حاليًا من خلال العيادة مباشرة. تواصل مع الاستقبال لإضافة رصيد لمحفظتك.',
+            ),
+            style: const TextStyle(color: NabadColors.mutedText, height: 1.6),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text(
-                'حسناً',
-                style: TextStyle(color: NabadColors.primary),
+              child: Text(
+                context.tr('حسناً'),
+                style: const TextStyle(color: NabadColors.primary),
               ),
             ),
           ],
@@ -63,11 +67,13 @@ class _WalletScreenState extends State<WalletScreen> {
   @override
   Widget build(BuildContext context) {
     return Directionality(
-      textDirection: TextDirection.rtl,
+      textDirection: context.l10n.isArabic
+          ? TextDirection.rtl
+          : TextDirection.ltr,
       child: Scaffold(
         backgroundColor: NabadColors.background,
         appBar: AppBar(
-          title: Text(widget.title),
+          title: Text(context.tr(widget.title)),
           centerTitle: true,
           backgroundColor: NabadColors.background,
           elevation: 0,
@@ -89,7 +95,7 @@ class _WalletScreenState extends State<WalletScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        state.message,
+                        context.tr(state.message),
                         textAlign: TextAlign.center,
                         style: const TextStyle(
                           color: NabadColors.mutedText,
@@ -101,7 +107,7 @@ class _WalletScreenState extends State<WalletScreen> {
                         onPressed: () =>
                             context.read<WalletCubit>().loadWallet(),
                         icon: const Icon(Icons.refresh_rounded),
-                        label: const Text('إعادة المحاولة'),
+                        label: Text(context.tr('إعادة المحاولة')),
                         style: TextButton.styleFrom(
                           foregroundColor: NabadColors.primary,
                         ),
@@ -123,9 +129,9 @@ class _WalletScreenState extends State<WalletScreen> {
                     onTopUp: widget.allowTopUp ? _showTopUpNotice : null,
                   ),
                   const SizedBox(height: 24),
-                  const Text(
-                    'سجل الحركات',
-                    style: TextStyle(
+                  Text(
+                    context.tr('سجل الحركات'),
+                    style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w800,
                       color: NabadColors.darkText,
@@ -144,9 +150,11 @@ class _WalletScreenState extends State<WalletScreen> {
                               color: NabadColors.primary.withOpacity(0.25),
                             ),
                             const SizedBox(height: 10),
-                            const Text(
-                              'لا توجد حركات بعد',
-                              style: TextStyle(color: NabadColors.mutedText),
+                            Text(
+                              context.tr('لا توجد حركات بعد'),
+                              style: const TextStyle(
+                                color: NabadColors.mutedText,
+                              ),
                             ),
                           ],
                         ),
@@ -208,7 +216,7 @@ class _BalanceCard extends StatelessWidget {
               ),
               const Spacer(),
               Text(
-                'رصيد المحفظة',
+                context.tr('رصيد المحفظة'),
                 style: TextStyle(
                   color: Colors.white.withAlpha(215),
                   fontSize: 13,
@@ -219,7 +227,7 @@ class _BalanceCard extends StatelessWidget {
           ),
           const SizedBox(height: 18),
           Text(
-            '${wallet.balance.toStringAsFixed(0)} ل.س',
+            '${wallet.balance.toStringAsFixed(0)} ${context.tr('ل.س')}',
             style: const TextStyle(
               color: Colors.white,
               fontSize: 32,
@@ -233,7 +241,7 @@ class _BalanceCard extends StatelessWidget {
               child: OutlinedButton.icon(
                 onPressed: onTopUp,
                 icon: const Icon(Icons.add_circle_outline_rounded, size: 18),
-                label: const Text('شحن المحفظة'),
+                label: Text(context.tr('شحن المحفظة')),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: Colors.white,
                   side: BorderSide(color: Colors.white.withAlpha(140)),
@@ -273,7 +281,7 @@ class _TransactionTile extends StatelessWidget {
       child: Row(
         children: [
           Text(
-            '$sign${transaction.amount.abs().toStringAsFixed(0)} ل.س',
+            '$sign${transaction.amount.abs().toStringAsFixed(0)} ${context.tr('ل.س')}',
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w800,

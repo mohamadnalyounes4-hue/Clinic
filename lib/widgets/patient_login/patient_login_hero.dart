@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:nabad/core/theme/nabad_colors.dart';
+import 'package:nabad/core/localization/app_localizations.dart';
 
 class PatientLoginHero extends StatelessWidget {
   const PatientLoginHero({super.key});
@@ -26,7 +27,7 @@ class PatientLoginHero extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'أهلاً بعودتك',
+                  context.tr('أهلاً بعودتك'),
                   style: TextStyle(
                     color: Colors.white.withAlpha(220),
                     fontSize: 15,
@@ -34,9 +35,9 @@ class PatientLoginHero extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 8),
-                const Text(
-                  'تسجيل دخول المريض',
-                  style: TextStyle(
+                Text(
+                  context.tr('تسجيل دخول المريض'),
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 25,
                     fontWeight: FontWeight.w900,
@@ -45,7 +46,7 @@ class PatientLoginHero extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'ادخل إلى مواعيدك وملفك الطبي بأمان.',
+                  context.tr('ادخل إلى مواعيدك وملفك الطبي بأمان.'),
                   style: TextStyle(
                     color: Colors.white.withAlpha(215),
                     fontSize: 13.5,

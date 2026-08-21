@@ -5,6 +5,7 @@ import 'package:nabad/Cubits/cubits/points_history_cubit.dart';
 import 'package:nabad/Cubits/states/points_history_state.dart';
 import 'package:nabad/Cubits/states/points_state.dart';
 import 'package:nabad/Models/points_model.dart';
+import 'package:nabad/core/localization/app_localizations.dart';
 import 'package:nabad/core/theme/nabad_colors.dart';
 
 class PointsHistoryScreen extends StatefulWidget {
@@ -49,11 +50,13 @@ class _PointsHistoryScreenState extends State<PointsHistoryScreen> {
   @override
   Widget build(BuildContext context) {
     return Directionality(
-      textDirection: TextDirection.rtl,
+      textDirection: context.l10n.isArabic
+          ? TextDirection.rtl
+          : TextDirection.ltr,
       child: Scaffold(
         backgroundColor: NabadColors.background,
         appBar: AppBar(
-          title: const Text('نقاطي'),
+          title: Text(context.tr('نقاطي')),
           centerTitle: true,
           backgroundColor: Colors.white,
           foregroundColor: NabadColors.deepTeal,
@@ -66,12 +69,12 @@ class _PointsHistoryScreenState extends State<PointsHistoryScreen> {
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
               const SliverToBoxAdapter(child: _PointsSummaryCard()),
-              const SliverToBoxAdapter(
+              SliverToBoxAdapter(
                 child: Padding(
-                  padding: EdgeInsets.fromLTRB(18, 4, 18, 12),
+                  padding: const EdgeInsets.fromLTRB(18, 4, 18, 12),
                   child: Text(
-                    'سجل الحركات',
-                    style: TextStyle(
+                    context.tr('سجل الحركات'),
+                    style: const TextStyle(
                       color: NabadColors.darkText,
                       fontSize: 18,
                       fontWeight: FontWeight.w900,
@@ -198,7 +201,7 @@ class _PointsSummaryCard extends StatelessWidget {
                             const SizedBox(width: 10),
                             Expanded(
                               child: Text(
-                                state.message,
+                                context.tr(state.message),
                                 style: const TextStyle(color: Colors.white),
                               ),
                             ),
@@ -253,9 +256,9 @@ class _SummaryContent extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'رصيدك الحالي',
-                    style: TextStyle(
+                  Text(
+                    context.tr('رصيدك الحالي'),
+                    style: const TextStyle(
                       color: Colors.white70,
                       fontWeight: FontWeight.w700,
                     ),
@@ -272,11 +275,11 @@ class _SummaryContent extends StatelessWidget {
                           fontWeight: FontWeight.w900,
                         ),
                       ),
-                      const Padding(
-                        padding: EdgeInsets.only(right: 5, bottom: 3),
+                      Padding(
+                        padding: const EdgeInsets.only(right: 5, bottom: 3),
                         child: Text(
-                          'نقطة',
-                          style: TextStyle(
+                          context.tr('نقطة'),
+                          style: const TextStyle(
                             color: Colors.white70,
                             fontWeight: FontWeight.w700,
                           ),
@@ -304,8 +307,10 @@ class _SummaryContent extends StatelessWidget {
                   Expanded(
                     child: Text(
                       availableDiscounts > 0
-                          ? 'خصم ${availablePercent.toStringAsFixed(0)}% جاهز'
-                          : 'نحو الخصم القادم',
+                          ? context.tr('خصم {percent}% جاهز', {
+                              'percent': availablePercent.toStringAsFixed(0),
+                            })
+                          : context.tr('نحو الخصم القادم'),
                       style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.w800,
@@ -338,8 +343,11 @@ class _SummaryContent extends StatelessWidget {
                 alignment: Alignment.centerRight,
                 child: Text(
                   availableDiscounts > 0
-                      ? 'استخدم نقاطك عند حجز موعد جديد'
-                      : 'باقي $left نقطة للوصول إلى ${summary.pointsPerUnit} نقطة',
+                      ? context.tr('استخدم نقاطك عند حجز موعد جديد')
+                      : context.tr(
+                          'باقي {left} نقطة للوصول إلى {target} نقطة',
+                          {'left': left, 'target': summary.pointsPerUnit},
+                        ),
                   style: TextStyle(
                     color: Colors.white.withAlpha(205),
                     fontSize: 11,
@@ -360,7 +368,25 @@ class _SummaryContent extends StatelessWidget {
             const SizedBox(width: 6),
             Expanded(
               child: Text(
-                'كل ${summary.pointsPerUnit} نقطة تمنحك خصماً ${summary.discountPerUnit.toStringAsFixed(0)}% — حتى ${summary.maxDiscountPercent.toStringAsFixed(0)}%',
+                context
+                    .tr('كل {unit} نقطة تمنحك خصماً {discount}% — حتى {max}%', {
+                      'unit': summary.pointsPerUnit,
+                      'discount': summary.discountPerUnit.toStringAsFixed(0),
+                      'max': summary.maxDiscountPercent.toStringAsFixed(0),
+                    }),
+                style: const TextStyle(color: Colors.white70, fontSize: 10.5),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 7),
+        Row(
+          children: [
+            const Icon(Icons.add_task_rounded, color: Colors.white70, size: 15),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                context.tr('كل موعد تحجزه يمنحك 20 نقطة بعد اكتماله'),
                 style: const TextStyle(color: Colors.white70, fontSize: 10.5),
               ),
             ),
@@ -403,7 +429,7 @@ class _TransactionCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  _typeLabel(transaction.type),
+                  context.tr(_typeLabel(transaction.type)),
                   style: const TextStyle(
                     color: NabadColors.darkText,
                     fontWeight: FontWeight.w800,
@@ -434,7 +460,7 @@ class _TransactionCard extends StatelessWidget {
                 ),
                 if (transaction.appointmentDate != null)
                   Text(
-                    'موعد ${transaction.appointmentDate} ${transaction.appointmentTime ?? ''}',
+                    '${context.tr('موعد')} ${transaction.appointmentDate} ${transaction.appointmentTime ?? ''}',
                     style: const TextStyle(
                       color: NabadColors.mutedText,
                       fontSize: 11,
@@ -457,7 +483,7 @@ class _TransactionCard extends StatelessWidget {
                 ),
               ),
               Text(
-                'الرصيد ${transaction.balanceAfter}',
+                '${context.tr('الرصيد')} ${transaction.balanceAfter}',
                 style: const TextStyle(
                   color: NabadColors.mutedText,
                   fontSize: 10,
@@ -506,15 +532,15 @@ class _EmptyView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
+    return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(Icons.stars_outlined, size: 60, color: NabadColors.primary),
           SizedBox(height: 14),
           Text(
-            'لا توجد حركات نقاط حتى الآن',
-            style: TextStyle(
+            context.tr('لا توجد حركات نقاط حتى الآن'),
+            style: const TextStyle(
               color: NabadColors.darkText,
               fontSize: 17,
               fontWeight: FontWeight.w900,
@@ -543,9 +569,12 @@ class _ErrorView extends StatelessWidget {
             color: NabadColors.primary,
           ),
           const SizedBox(height: 12),
-          Text(message, textAlign: TextAlign.center),
+          Text(context.tr(message), textAlign: TextAlign.center),
           const SizedBox(height: 12),
-          FilledButton(onPressed: onRetry, child: const Text('إعادة المحاولة')),
+          FilledButton(
+            onPressed: onRetry,
+            child: Text(context.tr('إعادة المحاولة')),
+          ),
         ],
       ),
     );

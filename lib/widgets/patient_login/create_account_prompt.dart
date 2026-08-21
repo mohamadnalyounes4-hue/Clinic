@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:nabad/core/theme/nabad_colors.dart';
+import 'package:nabad/core/localization/app_localizations.dart';
 
 class CreateAccountPrompt extends StatelessWidget {
   final VoidCallback? onCreateAccount;
@@ -12,9 +13,9 @@ class CreateAccountPrompt extends StatelessWidget {
       alignment: WrapAlignment.center,
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
-        const Text(
-          'في حال لم تمتلك حساب ؟ ',
-          style: TextStyle(
+        Text(
+          context.tr('ليس لديك حساب؟'),
+          style: const TextStyle(
             color: Color.fromARGB(255, 26, 98, 118),
             fontSize: 14,
             fontWeight: FontWeight.w700,
@@ -30,7 +31,7 @@ class CreateAccountPrompt extends StatelessWidget {
               fontWeight: FontWeight.w900,
             ),
           ),
-          child: Text('أنشئ حساب جديد'),
+          child: Text(context.tr('أنشئ حساب جديد')),
         ),
       ],
     );

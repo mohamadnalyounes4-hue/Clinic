@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../Models/appointment_model.dart';
+import '../../core/localization/app_localizations.dart';
 import '../../core/theme/nabd_colors.dart';
 
 class AppointmentCard extends StatelessWidget {
@@ -76,8 +77,10 @@ class AppointmentCard extends StatelessWidget {
                           borderRadius: BorderRadius.circular(50),
                         ),
                         child: Text(
-                          appointment.specialty,
-                          textDirection: TextDirection.rtl,
+                          context.tr(appointment.specialty),
+                          textDirection: context.l10n.isArabic
+                              ? TextDirection.rtl
+                              : TextDirection.ltr,
                           style: const TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
@@ -149,9 +152,11 @@ class AppointmentCard extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    isPendingApproval
-                        ? 'بانتظار موافقة السكرتاريا'
-                        : 'للإلغاء تواصل مع العيادة',
+                    context.tr(
+                      isPendingApproval
+                          ? 'بانتظار موافقة السكرتاريا'
+                          : 'للإلغاء تواصل مع العيادة',
+                    ),
                     style: TextStyle(
                       fontSize: 11.5,
                       color: NabadColors.mutedText.withOpacity(0.85),
@@ -160,9 +165,9 @@ class AppointmentCard extends StatelessWidget {
                   ),
                   TextButton(
                     onPressed: onReschedule,
-                    child: const Text(
-                      'إعادة جدولة',
-                      style: TextStyle(
+                    child: Text(
+                      context.tr('إعادة جدولة'),
+                      style: const TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
                         color: NabadColors.darkText,
@@ -186,9 +191,9 @@ class AppointmentCard extends StatelessWidget {
                           size: 18,
                           color: Color(0xFFF5A623),
                         ),
-                        label: const Text(
-                          'قيّم الطبيب',
-                          style: TextStyle(
+                        label: Text(
+                          context.tr('قيّم الطبيب'),
+                          style: const TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w700,
                             color: Color(0xFFF5A623),
@@ -205,7 +210,9 @@ class AppointmentCard extends StatelessWidget {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            'تقييمك: ${appointment.rating}/10',
+                            context.tr('تقييمك: {rating}/10', {
+                              'rating': appointment.rating,
+                            }),
                             style: const TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
@@ -235,15 +242,17 @@ class AppointmentCard extends StatelessWidget {
                         borderRadius: BorderRadius.circular(50),
                       ),
                       child: Text(
-                        isRejected
-                            ? 'مرفوض'
-                            : isCanceled
-                            ? 'ملغى'
-                            : isNoShow
-                            ? 'لم يحضر'
-                            : isPastUnconfirmed
-                            ? 'بانتظار تأكيد العيادة'
-                            : 'مكتمل',
+                        context.tr(
+                          isRejected
+                              ? 'مرفوض'
+                              : isCanceled
+                              ? 'ملغى'
+                              : isNoShow
+                              ? 'لم يحضر'
+                              : isPastUnconfirmed
+                              ? 'بانتظار تأكيد العيادة'
+                              : 'مكتمل',
+                        ),
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
@@ -273,8 +282,12 @@ class AppointmentCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
-                  'سبب الرفض: ${appointment.rejectionReason}',
-                  textDirection: TextDirection.rtl,
+                  context.tr('سبب الرفض: {reason}', {
+                    'reason': appointment.rejectionReason,
+                  }),
+                  textDirection: context.l10n.isArabic
+                      ? TextDirection.rtl
+                      : TextDirection.ltr,
                   style: const TextStyle(
                     color: Color(0xFFC62828),
                     fontSize: 12,

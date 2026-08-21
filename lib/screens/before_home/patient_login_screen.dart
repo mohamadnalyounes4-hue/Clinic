@@ -6,6 +6,7 @@ import 'package:nabad/core/Api/end_points.dart';
 import 'package:nabad/core/Cache/cache_helper.dart';
 import 'package:nabad/core/router/app_router.dart';
 import 'package:nabad/core/theme/nabad_colors.dart';
+import 'package:nabad/core/localization/app_localizations.dart';
 import 'package:nabad/screens/HomePage_patient/homepage_p.dart';
 import 'package:nabad/screens/before_home/health_information_screen.dart';
 import 'package:nabad/widgets/patient_login/country_code.dart';
@@ -48,16 +49,20 @@ class _PatientLoginScreenState extends State<PatientLoginScreen> {
 
   String? _validatePhone(String? value) {
     final String phone = value?.trim() ?? '';
-    if (phone.isEmpty) return 'أدخل رقم الهاتف';
-    if (phone.length != 10) return 'رقم الهاتف يجب أن يكون 10 أرقام';
+    if (phone.isEmpty) return context.tr('أدخل رقم الهاتف');
+    if (phone.length != 10) {
+      return context.tr('رقم الهاتف يجب أن يكون 10 أرقام');
+    }
     return null;
   }
 
   String? _validatePassword(String? value) {
     final String password = value ?? '';
-    if (password.isEmpty) return 'أدخل كلمة المرور';
+    if (password.isEmpty) return context.tr('أدخل كلمة المرور');
     // الباك إند يطلب 8 أحرف على الأقل لكلمة المرور (نفس شرط شاشة التسجيل).
-    if (password.length < 8) return 'كلمة المرور يجب أن تكون 8 أحرف على الأقل';
+    if (password.length < 8) {
+      return context.tr('كلمة المرور يجب أن تكون 8 أحرف على الأقل');
+    }
     return null;
   }
 
@@ -73,8 +78,8 @@ class _PatientLoginScreenState extends State<PatientLoginScreen> {
         if (state is LoginSuccessDoctor) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Text(
-                'هذا الحساب مسجل كطبيب، يرجى تسجيل الدخول كطبيب',
+              content: Text(
+                context.tr('هذا الحساب مسجل كطبيب، يرجى تسجيل الدخول كطبيب'),
               ),
               backgroundColor: Colors.orange.shade700,
               behavior: SnackBarBehavior.floating,
@@ -82,7 +87,8 @@ class _PatientLoginScreenState extends State<PatientLoginScreen> {
           );
         } else if (state is PatientProfileSuccess) {
           final patient = state.patient;
-          final bool isIncomplete = patient.gender == null ||
+          final bool isIncomplete =
+              patient.gender == null ||
               patient.birthDate == null ||
               patient.address == null;
 
@@ -109,7 +115,7 @@ class _PatientLoginScreenState extends State<PatientLoginScreen> {
             );
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text(state.message),
+                content: Text(context.tr(state.message)),
                 backgroundColor: Colors.orange.shade700,
                 behavior: SnackBarBehavior.floating,
               ),
@@ -122,7 +128,7 @@ class _PatientLoginScreenState extends State<PatientLoginScreen> {
           } else {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text(state.message),
+                content: Text(context.tr(state.message)),
                 backgroundColor: Colors.red.shade700,
                 behavior: SnackBarBehavior.floating,
               ),
@@ -131,7 +137,9 @@ class _PatientLoginScreenState extends State<PatientLoginScreen> {
         }
       },
       child: Directionality(
-        textDirection: TextDirection.rtl,
+        textDirection: context.l10n.isArabic
+            ? TextDirection.rtl
+            : TextDirection.ltr,
         child: Scaffold(
           backgroundColor: NabadColors.background,
           body: SafeArea(

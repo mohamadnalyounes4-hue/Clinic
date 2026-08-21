@@ -11,8 +11,11 @@ import 'package:nabad/Cubits/states/user_state.dart';
 import 'package:nabad/Models/doctor_dashboard_model.dart';
 import 'package:nabad/Models/doctor_schedule_model.dart';
 import 'package:nabad/Models/doctor_availability_model.dart';
+import 'package:nabad/core/localization/app_localizations.dart';
 import 'package:nabad/core/router/app_router.dart';
+import 'package:nabad/screens/HomePage_patient/patient_settings_screen.dart';
 import 'package:nabad/screens/HomePage_patient/wallet_screen.dart';
+import 'package:nabad/widgets/localized_text.dart';
 
 const _ink = Color(0xFF172A35);
 const _muted = Color(0xFF697783);
@@ -75,7 +78,7 @@ class _DoctorHomePageState extends State<DoctorHomePage>
               ..hideCurrentSnackBar()
               ..showSnackBar(
                 SnackBar(
-                  content: Text(message, textDirection: TextDirection.rtl),
+                  content: LocalizedText(message),
                   backgroundColor: state.errorMessage == null
                       ? _deepTeal
                       : _danger,
@@ -101,7 +104,9 @@ class _DoctorHomePageState extends State<DoctorHomePage>
           if (!didPop) SystemNavigator.pop();
         },
         child: Directionality(
-          textDirection: TextDirection.rtl,
+          textDirection: context.l10n.isArabic
+              ? TextDirection.rtl
+              : TextDirection.ltr,
           child: Scaffold(
             backgroundColor: _background,
             body: BlocBuilder<DoctorDashboardCubit, DoctorDashboardState>(
@@ -289,7 +294,7 @@ class _Dashboard extends StatelessWidget {
                   onStart: next == null ? null : () => onStart(next),
                 ),
                 const SizedBox(height: 28),
-                const Text(
+                const LocalizedText(
                   'إجراءات سريعة',
                   style: TextStyle(
                     color: _ink,
@@ -384,13 +389,13 @@ class _Header extends StatelessWidget {
             alignment: Alignment.centerRight,
             child: IconButton(
               onPressed: onNotifications,
-              tooltip: 'التنبيهات',
+              tooltip: context.tr('التنبيهات'),
               iconSize: 31,
               color: const Color(0xFF3A444B),
               icon: Badge(
                 isLabelVisible: unreadCount > 0,
                 backgroundColor: _teal,
-                label: Text(unreadCount > 99 ? '99+' : '$unreadCount'),
+                label: LocalizedText(unreadCount > 99 ? '99+' : '$unreadCount'),
                 child: const Icon(Icons.notifications_none_rounded),
               ),
             ),
@@ -400,7 +405,7 @@ class _Header extends StatelessWidget {
             width: 74,
             height: 48,
             fit: BoxFit.contain,
-            errorBuilder: (_, _, _) => const Text(
+            errorBuilder: (_, _, _) => const LocalizedText(
               'نبض',
               style: TextStyle(
                 color: _teal,
@@ -437,12 +442,12 @@ class _Greeting extends StatelessWidget {
         Text.rich(
           TextSpan(
             children: [
-              const TextSpan(
-                text: 'مرحباً د. ',
-                style: TextStyle(color: _ink),
+              TextSpan(
+                text: context.tr('مرحباً د. '),
+                style: const TextStyle(color: _ink),
               ),
               TextSpan(
-                text: profile?.fullName ?? 'الطبيب',
+                text: profile?.fullName ?? context.tr('الطبيب'),
                 style: const TextStyle(color: _teal),
               ),
             ],
@@ -452,7 +457,7 @@ class _Greeting extends StatelessWidget {
           style: const TextStyle(fontSize: 25, fontWeight: FontWeight.w800),
         ),
         const SizedBox(height: 8),
-        const Text(
+        const LocalizedText(
           'إليك نظرة سريعة على يومك الطبي',
           style: TextStyle(
             color: _muted,
@@ -571,7 +576,7 @@ class _MetricCard extends StatelessWidget {
                 ),
                 child: Icon(icon, color: accent, size: 23),
               ),
-              Text(
+              LocalizedText(
                 value,
                 style: TextStyle(
                   color: accent,
@@ -583,7 +588,7 @@ class _MetricCard extends StatelessWidget {
             ],
           ),
           const Spacer(),
-          Text(
+          LocalizedText(
             title,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -594,7 +599,7 @@ class _MetricCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 5),
-          Text(
+          LocalizedText(
             subtitle,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -620,12 +625,16 @@ class _TitleWithIcon extends StatelessWidget {
       children: [
         Icon(icon, color: _teal, size: 23),
         const SizedBox(width: 8),
-        Text(
-          title,
-          style: const TextStyle(
-            color: _deepTeal,
-            fontSize: 20,
-            fontWeight: FontWeight.w800,
+        Flexible(
+          child: LocalizedText(
+            title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: _deepTeal,
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+            ),
           ),
         ),
       ],
@@ -676,7 +685,7 @@ class _NextAppointmentCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    LocalizedText(
                       item.patientName,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -687,7 +696,7 @@ class _NextAppointmentCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 6),
-                    Text(
+                    LocalizedText(
                       item.visitType,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -699,7 +708,7 @@ class _NextAppointmentCard extends StatelessWidget {
                     ),
                     if (item.notes.isNotEmpty) ...[
                       const SizedBox(height: 3),
-                      Text(
+                      LocalizedText(
                         item.notes,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -723,7 +732,7 @@ class _NextAppointmentCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text(
+                    LocalizedText(
                       _displayTime(item.time),
                       textDirection: TextDirection.ltr,
                       style: const TextStyle(
@@ -743,7 +752,7 @@ class _NextAppointmentCard extends StatelessWidget {
                         ),
                         const SizedBox(width: 4),
                         Flexible(
-                          child: Text(
+                          child: LocalizedText(
                             '${item.durationMinutes} دقيقة',
                             style: const TextStyle(
                               color: Color(0xFFC8EBEE),
@@ -766,7 +775,7 @@ class _NextAppointmentCard extends StatelessWidget {
                 child: FilledButton.icon(
                   onPressed: onStart,
                   icon: const Icon(Icons.medical_services_outlined, size: 21),
-                  label: const Text('بدء المعاينة'),
+                  label: const LocalizedText('بدء المعاينة'),
                   style: FilledButton.styleFrom(
                     backgroundColor: Colors.white,
                     foregroundColor: _deepTeal,
@@ -787,7 +796,7 @@ class _NextAppointmentCard extends StatelessWidget {
                 child: OutlinedButton.icon(
                   onPressed: onDetails,
                   icon: const Icon(Icons.person_outline_rounded, size: 20),
-                  label: const Text('تفاصيل المريض'),
+                  label: const LocalizedText('تفاصيل المريض'),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Colors.white,
                     side: BorderSide(color: Colors.white.withAlpha(145)),
@@ -881,7 +890,7 @@ class _QuickActions extends StatelessWidget {
                           child: Icon(action.$1, color: _teal, size: 27),
                         ),
                         const SizedBox(height: 8),
-                        Text(
+                        LocalizedText(
                           action.$2,
                           style: const TextStyle(
                             color: _ink,
@@ -918,7 +927,7 @@ class _SectionHeading extends StatelessWidget {
     return Row(
       children: [
         Expanded(
-          child: Text(
+          child: LocalizedText(
             title,
             style: const TextStyle(
               color: _ink,
@@ -929,7 +938,7 @@ class _SectionHeading extends StatelessWidget {
         ),
         TextButton.icon(
           onPressed: onAction,
-          label: Text(action),
+          label: LocalizedText(action),
           icon: const Icon(Icons.chevron_left_rounded, size: 21),
           style: TextButton.styleFrom(
             foregroundColor: _teal,
@@ -1010,7 +1019,7 @@ class _CompactAppointment extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
+                  LocalizedText(
                     appointment.patientName,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -1021,7 +1030,7 @@ class _CompactAppointment extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 5),
-                  Text(
+                  LocalizedText(
                     appointment.visitType,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -1034,7 +1043,7 @@ class _CompactAppointment extends StatelessWidget {
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text(
+                LocalizedText(
                   _displayTime(appointment.time),
                   textDirection: TextDirection.ltr,
                   style: const TextStyle(
@@ -1044,7 +1053,7 @@ class _CompactAppointment extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 5),
-                Text(
+                LocalizedText(
                   '${appointment.durationMinutes} دقيقة',
                   style: const TextStyle(color: _muted, fontSize: 11),
                 ),
@@ -1096,7 +1105,7 @@ class _StatusChip extends StatelessWidget {
             decoration: BoxDecoration(color: color, shape: BoxShape.circle),
           ),
           const SizedBox(width: 4),
-          Text(
+          LocalizedText(
             label,
             style: TextStyle(
               color: color,
@@ -1186,7 +1195,7 @@ class _AppointmentsPageState extends State<_AppointmentsPage> {
                   onNotifications: widget.onNotifications,
                 ),
                 const SizedBox(height: 23),
-                const Text(
+                const LocalizedText(
                   'مواعيدي',
                   style: TextStyle(
                     color: _teal,
@@ -1195,7 +1204,7 @@ class _AppointmentsPageState extends State<_AppointmentsPage> {
                   ),
                 ),
                 const SizedBox(height: 5),
-                const Text(
+                const LocalizedText(
                   'جدول اليوم وجميع المراجعين',
                   style: TextStyle(color: _muted, fontSize: 15),
                 ),
@@ -1231,7 +1240,7 @@ class _AppointmentsPageState extends State<_AppointmentsPage> {
                 ],
                 if (next != null) ...[
                   const SizedBox(height: 22),
-                  const Text(
+                  const LocalizedText(
                     'الزيارة التالية',
                     style: TextStyle(
                       color: _deepTeal,
@@ -1247,7 +1256,7 @@ class _AppointmentsPageState extends State<_AppointmentsPage> {
                   ),
                 ],
                 const SizedBox(height: 23),
-                Text(
+                LocalizedText(
                   _filter == 0 ? 'جدول مواعيد اليوم' : 'قائمة المواعيد',
                   style: const TextStyle(
                     color: _ink,
@@ -1352,7 +1361,7 @@ class _DateStrip extends StatelessWidget {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text(
+                        LocalizedText(
                           _arabicWeekday(date.weekday),
                           maxLines: 1,
                           style: TextStyle(
@@ -1362,7 +1371,7 @@ class _DateStrip extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 5),
-                        Text(
+                        LocalizedText(
                           '${date.day}',
                           style: TextStyle(
                             color: selected ? Colors.white : _ink,
@@ -1371,7 +1380,7 @@ class _DateStrip extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 2),
-                        Text(
+                        LocalizedText(
                           _arabicMonth(date.month),
                           style: TextStyle(
                             color: selected ? Colors.white : _muted,
@@ -1432,7 +1441,7 @@ class _AppointmentFilters extends StatelessWidget {
                   ),
                   const SizedBox(width: 6),
                   Flexible(
-                    child: Text(
+                    child: LocalizedText(
                       items[index].$2,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -1495,14 +1504,14 @@ class _AppointmentSummary extends StatelessWidget {
                 children: [
                   Icon(item.$1, color: item.$4, size: 25),
                   const SizedBox(height: 6),
-                  Text(
+                  LocalizedText(
                     item.$2,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(color: _ink, fontSize: 11.5),
                   ),
                   const SizedBox(height: 3),
-                  Text(
+                  LocalizedText(
                     '${item.$3}',
                     style: TextStyle(
                       color: item.$4,
@@ -1539,7 +1548,7 @@ class _AppointmentsApiWarning extends StatelessWidget {
           const Icon(Icons.info_outline_rounded, color: Color(0xFFE77A0B)),
           const SizedBox(width: 9),
           Expanded(
-            child: Text(
+            child: LocalizedText(
               message,
               style: const TextStyle(color: _ink, fontSize: 12.5, height: 1.4),
             ),
@@ -1600,7 +1609,7 @@ class _LegacyAppointmentsPage extends StatelessWidget {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(
+                                    LocalizedText(
                                       item.patientName,
                                       style: const TextStyle(
                                         color: _ink,
@@ -1609,7 +1618,7 @@ class _LegacyAppointmentsPage extends StatelessWidget {
                                       ),
                                     ),
                                     const SizedBox(height: 5),
-                                    Text(
+                                    LocalizedText(
                                       '${item.visitType} • ${_formatDate(item.date)}',
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
@@ -1624,7 +1633,7 @@ class _LegacyAppointmentsPage extends StatelessWidget {
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.end,
                                 children: [
-                                  Text(
+                                  LocalizedText(
                                     _displayTime(item.time),
                                     textDirection: TextDirection.ltr,
                                     style: const TextStyle(
@@ -1649,7 +1658,7 @@ class _LegacyAppointmentsPage extends StatelessWidget {
                                   Icons.medical_services_outlined,
                                   size: 19,
                                 ),
-                                label: const Text('بدء المعاينة'),
+                                label: const LocalizedText('بدء المعاينة'),
                                 style: FilledButton.styleFrom(
                                   backgroundColor: _teal,
                                   foregroundColor: Colors.white,
@@ -1718,14 +1727,14 @@ class _PatientsPage extends StatelessWidget {
                       size: 52,
                       borderWidth: 0,
                     ),
-                    title: Text(
+                    title: LocalizedText(
                       patient.patientName,
                       style: const TextStyle(
                         color: _ink,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
-                    subtitle: Text(
+                    subtitle: LocalizedText(
                       patient.phone.isEmpty ? patient.visitType : patient.phone,
                       style: const TextStyle(color: _muted),
                     ),
@@ -1799,7 +1808,7 @@ class _RecordCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
+                  LocalizedText(
                     record.patientName,
                     style: const TextStyle(
                       color: _ink,
@@ -1808,13 +1817,13 @@ class _RecordCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 5),
-                  Text(
+                  LocalizedText(
                     record.diagnosis,
                     style: const TextStyle(color: _muted, fontSize: 13),
                   ),
                   if (record.notes.isNotEmpty) ...[
                     const SizedBox(height: 4),
-                    Text(
+                    LocalizedText(
                       record.notes,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
@@ -1824,7 +1833,7 @@ class _RecordCard extends StatelessWidget {
                 ],
               ),
             ),
-            Text(
+            LocalizedText(
               _formatDate(record.date),
               style: const TextStyle(color: _muted, fontSize: 11),
             ),
@@ -1894,10 +1903,10 @@ class _MedicalRecordDetailsPageState extends State<_MedicalRecordDetailsPage> {
         return Scaffold(
           backgroundColor: _background,
           appBar: AppBar(
-            title: const Text('تفاصيل السجل الطبي'),
+            title: const LocalizedText('تفاصيل السجل الطبي'),
             actions: [
               IconButton(
-                tooltip: _editing ? 'إلغاء التعديل' : 'تعديل',
+                tooltip: context.tr(_editing ? 'إلغاء التعديل' : 'تعديل'),
                 onPressed: state.actionLoading
                     ? null
                     : () => setState(() => _editing = !_editing),
@@ -1906,7 +1915,7 @@ class _MedicalRecordDetailsPageState extends State<_MedicalRecordDetailsPage> {
                 ),
               ),
               IconButton(
-                tooltip: 'حذف',
+                tooltip: context.tr('حذف'),
                 onPressed: state.actionLoading ? null : _confirmDelete,
                 icon: const Icon(Icons.delete_outline_rounded, color: _danger),
               ),
@@ -1928,7 +1937,7 @@ class _MedicalRecordDetailsPageState extends State<_MedicalRecordDetailsPage> {
                         child: Icon(Icons.person_outline_rounded, size: 30),
                       ),
                       const SizedBox(height: 10),
-                      Text(
+                      LocalizedText(
                         _record.patientName,
                         style: const TextStyle(
                           color: _ink,
@@ -1937,7 +1946,7 @@ class _MedicalRecordDetailsPageState extends State<_MedicalRecordDetailsPage> {
                         ),
                       ),
                       const SizedBox(height: 4),
-                      Text(
+                      LocalizedText(
                         'تاريخ السجل: ${_formatDate(_record.date)}',
                         style: const TextStyle(color: _muted, fontSize: 12),
                       ),
@@ -1983,8 +1992,8 @@ class _MedicalRecordDetailsPageState extends State<_MedicalRecordDetailsPage> {
                 if (_record.laboratoryStatus.isNotEmpty && !_editing)
                   ListTile(
                     leading: const Icon(Icons.science_outlined, color: _teal),
-                    title: const Text('حالة طلب المختبر'),
-                    trailing: Text(_record.laboratoryStatus),
+                    title: const LocalizedText('حالة طلب المختبر'),
+                    trailing: LocalizedText(_record.laboratoryStatus),
                   ),
                 if (_editing) ...[
                   const SizedBox(height: 10),
@@ -2000,7 +2009,7 @@ class _MedicalRecordDetailsPageState extends State<_MedicalRecordDetailsPage> {
                             ),
                           )
                         : const Icon(Icons.save_outlined),
-                    label: const Text('حفظ التعديلات'),
+                    label: const LocalizedText('حفظ التعديلات'),
                     style: FilledButton.styleFrom(
                       backgroundColor: _teal,
                       minimumSize: const Size.fromHeight(52),
@@ -2030,7 +2039,7 @@ class _MedicalRecordDetailsPageState extends State<_MedicalRecordDetailsPage> {
         maxLines: maxLines,
         keyboardType: keyboardType,
         decoration: InputDecoration(
-          labelText: required ? '$label *' : label,
+          labelText: context.tr(required ? '$label *' : label),
           filled: true,
           fillColor: _editing ? Colors.white : const Color(0xFFF4F8F8),
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
@@ -2046,7 +2055,7 @@ class _MedicalRecordDetailsPageState extends State<_MedicalRecordDetailsPage> {
   }) {
     return SwitchListTile(
       contentPadding: EdgeInsets.zero,
-      title: Text(title),
+      title: LocalizedText(title),
       value: value,
       activeThumbColor: _teal,
       onChanged: _editing ? onChanged : null,
@@ -2108,19 +2117,19 @@ class _MedicalRecordDetailsPageState extends State<_MedicalRecordDetailsPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('حذف السجل الطبي؟'),
-        content: const Text(
+        title: const LocalizedText('حذف السجل الطبي؟'),
+        content: const LocalizedText(
           'سيتم حذف السجل نهائياً ولا يمكن التراجع عن هذه العملية.',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('إلغاء'),
+            child: const LocalizedText('إلغاء'),
           ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: _danger),
             onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('حذف'),
+            child: const LocalizedText('حذف'),
           ),
         ],
       ),
@@ -2143,7 +2152,7 @@ class _MedicalRecordDetailsPageState extends State<_MedicalRecordDetailsPage> {
   void _message(String message) {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(message)));
+      ..showSnackBar(SnackBar(content: LocalizedText(message)));
   }
 }
 
@@ -2175,7 +2184,7 @@ class _AccountPage extends StatelessWidget {
                   borderWidth: 3,
                 ),
                 const SizedBox(height: 13),
-                Text(
+                LocalizedText(
                   'د. ${profile?.fullName ?? 'الطبيب'}',
                   style: const TextStyle(
                     color: _ink,
@@ -2184,7 +2193,7 @@ class _AccountPage extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 4),
-                Text(
+                LocalizedText(
                   profile?.specialization ?? '',
                   style: const TextStyle(color: _teal, fontSize: 14),
                 ),
@@ -2206,56 +2215,106 @@ class _AccountPage extends StatelessWidget {
           const SizedBox(height: 17),
           Container(
             decoration: _whiteCardDecoration(20),
-            child: ListTile(
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 18,
-                vertical: 6,
-              ),
-              leading: const CircleAvatar(
-                backgroundColor: _paleTeal,
-                foregroundColor: _teal,
-                child: Icon(Icons.calendar_month_outlined),
-              ),
-              title: const Text(
-                'جدول الدوام',
-                style: TextStyle(color: _ink, fontWeight: FontWeight.w800),
-              ),
-              subtitle: const Text('ساعات العمل والأيام المتاحة'),
-              trailing: const Icon(Icons.chevron_left_rounded, color: _teal),
-              onTap: profile == null || profile.doctorId == 0
-                  ? null
-                  : () => Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) =>
-                            _DoctorSchedulePage(doctorId: profile.doctorId),
+            child: Material(
+              type: MaterialType.transparency,
+              child: ListTile(
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 6,
+                ),
+                leading: const CircleAvatar(
+                  backgroundColor: _paleTeal,
+                  foregroundColor: _teal,
+                  child: Icon(Icons.calendar_month_outlined),
+                ),
+                title: const LocalizedText(
+                  'جدول الدوام',
+                  style: TextStyle(color: _ink, fontWeight: FontWeight.w800),
+                ),
+                subtitle: const LocalizedText('ساعات العمل والأيام المتاحة'),
+                trailing: Icon(
+                  context.l10n.isArabic
+                      ? Icons.chevron_left_rounded
+                      : Icons.chevron_right_rounded,
+                  color: _teal,
+                ),
+                onTap: profile == null || profile.doctorId == 0
+                    ? null
+                    : () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) =>
+                              _DoctorSchedulePage(doctorId: profile.doctorId),
+                        ),
                       ),
-                    ),
+              ),
             ),
           ),
           const SizedBox(height: 12),
           Container(
             decoration: _whiteCardDecoration(20),
-            child: ListTile(
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 18,
-                vertical: 6,
+            child: Material(
+              type: MaterialType.transparency,
+              child: ListTile(
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 6,
+                ),
+                leading: const CircleAvatar(
+                  backgroundColor: _paleTeal,
+                  foregroundColor: _teal,
+                  child: Icon(Icons.account_balance_wallet_outlined),
+                ),
+                title: const LocalizedText(
+                  'محفظتي',
+                  style: TextStyle(color: _ink, fontWeight: FontWeight.w800),
+                ),
+                subtitle: const LocalizedText('عرض الرصيد وسجل الحركات'),
+                trailing: Icon(
+                  context.l10n.isArabic
+                      ? Icons.chevron_left_rounded
+                      : Icons.chevron_right_rounded,
+                  color: _teal,
+                ),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const WalletScreen(
+                      title: 'محفظة الدكتور',
+                      allowTopUp: false,
+                    ),
+                  ),
+                ),
               ),
-              leading: const CircleAvatar(
-                backgroundColor: _paleTeal,
-                foregroundColor: _teal,
-                child: Icon(Icons.account_balance_wallet_outlined),
-              ),
-              title: const Text(
-                'محفظتي',
-                style: TextStyle(color: _ink, fontWeight: FontWeight.w800),
-              ),
-              subtitle: const Text('عرض الرصيد وسجل الحركات'),
-              trailing: const Icon(Icons.chevron_left_rounded, color: _teal),
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => const WalletScreen(
-                    title: 'محفظة الدكتور',
-                    allowTopUp: false,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Container(
+            decoration: _whiteCardDecoration(20),
+            child: Material(
+              type: MaterialType.transparency,
+              child: ListTile(
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 6,
+                ),
+                leading: const CircleAvatar(
+                  backgroundColor: _paleTeal,
+                  foregroundColor: _teal,
+                  child: Icon(Icons.settings_outlined),
+                ),
+                title: const LocalizedText(
+                  'الإعدادات',
+                  style: TextStyle(color: _ink, fontWeight: FontWeight.w800),
+                ),
+                subtitle: const LocalizedText('لغة التطبيق'),
+                trailing: Icon(
+                  context.l10n.isArabic
+                      ? Icons.chevron_left_rounded
+                      : Icons.chevron_right_rounded,
+                  color: _teal,
+                ),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const PatientSettingsScreen(),
                   ),
                 ),
               ),
@@ -2278,7 +2337,7 @@ class _AccountPage extends StatelessWidget {
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
                       : const Icon(Icons.logout_rounded),
-                  label: const Text('تسجيل الخروج'),
+                  label: const LocalizedText('تسجيل الخروج'),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: _danger,
                     side: const BorderSide(color: Color(0x33C91F2A)),
@@ -2353,11 +2412,13 @@ class _DoctorSchedulePageState extends State<_DoctorSchedulePage> {
   @override
   Widget build(BuildContext context) {
     return Directionality(
-      textDirection: TextDirection.rtl,
+      textDirection: context.l10n.isArabic
+          ? TextDirection.rtl
+          : TextDirection.ltr,
       child: Scaffold(
         backgroundColor: _background,
         appBar: AppBar(
-          title: const Text('جدول الدوام'),
+          title: const LocalizedText('جدول الدوام'),
           backgroundColor: _background,
           surfaceTintColor: Colors.transparent,
         ),
@@ -2381,7 +2442,7 @@ class _DoctorSchedulePageState extends State<_DoctorSchedulePage> {
                           Icon(Icons.info_outline_rounded, color: _teal),
                           SizedBox(width: 10),
                           Expanded(
-                            child: Text(
+                            child: LocalizedText(
                               'تعديل الدوام والإجازات يتم من لوحة الإدارة.',
                               style: TextStyle(
                                 color: _deepTeal,
@@ -2393,7 +2454,7 @@ class _DoctorSchedulePageState extends State<_DoctorSchedulePage> {
                       ),
                     ),
                     const SizedBox(height: 20),
-                    const Text(
+                    const LocalizedText(
                       'البرنامج الأسبوعي',
                       style: TextStyle(
                         color: _ink,
@@ -2425,7 +2486,7 @@ class _DoctorSchedulePageState extends State<_DoctorSchedulePage> {
                               ),
                               const SizedBox(width: 12),
                               Expanded(
-                                child: Text(
+                                child: LocalizedText(
                                   _arabicDay(item.day),
                                   style: const TextStyle(
                                     color: _ink,
@@ -2433,7 +2494,7 @@ class _DoctorSchedulePageState extends State<_DoctorSchedulePage> {
                                   ),
                                 ),
                               ),
-                              Text(
+                              LocalizedText(
                                 '${_shortTime(item.startTime)} – ${_shortTime(item.endTime)}',
                                 textDirection: TextDirection.ltr,
                                 style: const TextStyle(
@@ -2446,7 +2507,7 @@ class _DoctorSchedulePageState extends State<_DoctorSchedulePage> {
                         ),
                       ),
                     const SizedBox(height: 20),
-                    const Text(
+                    const LocalizedText(
                       'التوفر خلال الأسبوعين القادمين',
                       style: TextStyle(
                         color: _ink,
@@ -2467,11 +2528,11 @@ class _DoctorSchedulePageState extends State<_DoctorSchedulePage> {
                               : Icons.event_busy_rounded,
                           color: available ? _teal : _danger,
                         ),
-                        title: Text(
+                        title: LocalizedText(
                           '${_arabicWeekday(item.date.weekday)}، ${item.date.day}/${item.date.month}',
                           style: const TextStyle(fontWeight: FontWeight.w700),
                         ),
-                        trailing: Text(
+                        trailing: LocalizedText(
                           available
                               ? '${item.availableSlots} موعد متاح'
                               : 'غير متاح',
@@ -2550,12 +2611,12 @@ class _InfoRow extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
+              LocalizedText(
                 label,
                 style: const TextStyle(color: _muted, fontSize: 11.5),
               ),
               const SizedBox(height: 3),
-              Text(
+              LocalizedText(
                 value.isEmpty ? 'غير متوفر' : value,
                 style: const TextStyle(color: _ink, fontSize: 14),
               ),
@@ -2591,7 +2652,7 @@ class _StandardPage extends StatelessWidget {
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.fromLTRB(20, 24, 20, 28),
           children: [
-            Text(
+            LocalizedText(
               title,
               style: const TextStyle(
                 color: _ink,
@@ -2600,7 +2661,10 @@ class _StandardPage extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 5),
-            Text(subtitle, style: const TextStyle(color: _muted, fontSize: 14)),
+            LocalizedText(
+              subtitle,
+              style: const TextStyle(color: _muted, fontSize: 14),
+            ),
             const SizedBox(height: 23),
             child,
           ],
@@ -2616,11 +2680,13 @@ class _NotificationsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Directionality(
-      textDirection: TextDirection.rtl,
+      textDirection: context.l10n.isArabic
+          ? TextDirection.rtl
+          : TextDirection.ltr,
       child: Scaffold(
         backgroundColor: _background,
         appBar: AppBar(
-          title: const Text('التنبيهات'),
+          title: const LocalizedText('التنبيهات'),
           backgroundColor: _background,
           surfaceTintColor: Colors.transparent,
           actions: [
@@ -2631,7 +2697,7 @@ class _NotificationsPage extends StatelessWidget {
                     : () => context
                           .read<DoctorDashboardCubit>()
                           .markAllNotificationsRead(),
-                child: const Text('قراءة الكل'),
+                child: const LocalizedText('قراءة الكل'),
               ),
             ),
           ],
@@ -2674,7 +2740,7 @@ class _NotificationsPage extends StatelessWidget {
                         foregroundColor: _teal,
                         child: Icon(Icons.notifications_outlined),
                       ),
-                      title: Text(
+                      title: LocalizedText(
                         item.title,
                         style: const TextStyle(
                           color: _ink,
@@ -2683,7 +2749,7 @@ class _NotificationsPage extends StatelessWidget {
                       ),
                       subtitle: Padding(
                         padding: const EdgeInsets.only(top: 5),
-                        child: Text(
+                        child: LocalizedText(
                           item.body,
                           style: const TextStyle(color: _muted),
                         ),
@@ -2792,11 +2858,13 @@ class _PrescriptionDetailsPageState extends State<_PrescriptionDetailsPage> {
   Widget build(BuildContext context) {
     final prescription = _prescription;
     return Directionality(
-      textDirection: TextDirection.rtl,
+      textDirection: context.l10n.isArabic
+          ? TextDirection.rtl
+          : TextDirection.ltr,
       child: Scaffold(
         backgroundColor: _background,
         appBar: AppBar(
-          title: const Text('تفاصيل الوصفة'),
+          title: const LocalizedText('تفاصيل الوصفة'),
           backgroundColor: _background,
           surfaceTintColor: Colors.transparent,
           actions: prescription == null
@@ -2804,14 +2872,16 @@ class _PrescriptionDetailsPageState extends State<_PrescriptionDetailsPage> {
               : [
                   if (prescription.status == 'pending')
                     IconButton(
-                      tooltip: _editing ? 'إلغاء التعديل' : 'تعديل الوصفة',
+                      tooltip: context.tr(
+                        _editing ? 'إلغاء التعديل' : 'تعديل الوصفة',
+                      ),
                       onPressed: () => setState(() => _editing = !_editing),
                       icon: Icon(
                         _editing ? Icons.close_rounded : Icons.edit_outlined,
                       ),
                     ),
                   IconButton(
-                    tooltip: 'حذف الوصفة',
+                    tooltip: context.tr('حذف الوصفة'),
                     onPressed: _confirmDelete,
                     icon: const Icon(
                       Icons.delete_outline_rounded,
@@ -2845,7 +2915,7 @@ class _PrescriptionDetailsPageState extends State<_PrescriptionDetailsPage> {
                             child: Icon(Icons.medication_outlined, size: 29),
                           ),
                           const SizedBox(height: 10),
-                          Text(
+                          LocalizedText(
                             prescription.patientName,
                             style: const TextStyle(
                               color: _ink,
@@ -2854,7 +2924,7 @@ class _PrescriptionDetailsPageState extends State<_PrescriptionDetailsPage> {
                             ),
                           ),
                           const SizedBox(height: 5),
-                          Text(
+                          LocalizedText(
                             'الحالة: ${_prescriptionStatus(prescription.status)}',
                             style: const TextStyle(
                               color: _teal,
@@ -2862,7 +2932,7 @@ class _PrescriptionDetailsPageState extends State<_PrescriptionDetailsPage> {
                             ),
                           ),
                           if (prescription.date.isNotEmpty)
-                            Text(
+                            LocalizedText(
                               'تاريخ الإصدار: ${_formatDate(prescription.date)}',
                               style: const TextStyle(
                                 color: _muted,
@@ -2878,7 +2948,7 @@ class _PrescriptionDetailsPageState extends State<_PrescriptionDetailsPage> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
+                        const LocalizedText(
                           'الأدوية',
                           style: TextStyle(
                             color: _ink,
@@ -2890,7 +2960,7 @@ class _PrescriptionDetailsPageState extends State<_PrescriptionDetailsPage> {
                           TextButton.icon(
                             onPressed: _addMedicine,
                             icon: const Icon(Icons.add_rounded),
-                            label: const Text('إضافة دواء'),
+                            label: const LocalizedText('إضافة دواء'),
                           ),
                       ],
                     ),
@@ -2910,13 +2980,13 @@ class _PrescriptionDetailsPageState extends State<_PrescriptionDetailsPage> {
                               foregroundColor: _teal,
                               child: Icon(Icons.medication_outlined),
                             ),
-                            title: Text(
+                            title: LocalizedText(
                               entry.value.name,
                               style: const TextStyle(
                                 fontWeight: FontWeight.w800,
                               ),
                             ),
-                            subtitle: Text(
+                            subtitle: LocalizedText(
                               [
                                 entry.value.dosage,
                                 entry.value.frequency,
@@ -2952,7 +3022,7 @@ class _PrescriptionDetailsPageState extends State<_PrescriptionDetailsPage> {
                                 ),
                               )
                             : const Icon(Icons.save_outlined),
-                        label: const Text('حفظ التعديلات'),
+                        label: const LocalizedText('حفظ التعديلات'),
                         style: FilledButton.styleFrom(
                           backgroundColor: _teal,
                           minimumSize: const Size.fromHeight(52),
@@ -2978,7 +3048,7 @@ class _PrescriptionDetailsPageState extends State<_PrescriptionDetailsPage> {
         readOnly: !_editing,
         maxLines: maxLines,
         decoration: InputDecoration(
-          labelText: label,
+          labelText: context.tr(label),
           filled: true,
           fillColor: _editing ? Colors.white : const Color(0xFFF4F8F8),
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
@@ -3033,17 +3103,17 @@ class _PrescriptionDetailsPageState extends State<_PrescriptionDetailsPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('حذف الوصفة؟'),
-        content: const Text('سيتم حذف الوصفة وأدويتها نهائياً.'),
+        title: const LocalizedText('حذف الوصفة؟'),
+        content: const LocalizedText('سيتم حذف الوصفة وأدويتها نهائياً.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('إلغاء'),
+            child: const LocalizedText('إلغاء'),
           ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: _danger),
             onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('حذف'),
+            child: const LocalizedText('حذف'),
           ),
         ],
       ),
@@ -3081,7 +3151,7 @@ class _PrescriptionDetailsPageState extends State<_PrescriptionDetailsPage> {
   void _message(String message) {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(message)));
+      ..showSnackBar(SnackBar(content: LocalizedText(message)));
   }
 }
 
@@ -3133,11 +3203,13 @@ class _ListScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Directionality(
-      textDirection: TextDirection.rtl,
+      textDirection: context.l10n.isArabic
+          ? TextDirection.rtl
+          : TextDirection.ltr,
       child: Scaffold(
         backgroundColor: _background,
         appBar: AppBar(
-          title: Text(title),
+          title: LocalizedText(title),
           backgroundColor: _background,
           surfaceTintColor: Colors.transparent,
         ),
@@ -3189,7 +3261,7 @@ class _SimpleDataCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
+                  LocalizedText(
                     title,
                     style: const TextStyle(
                       color: _ink,
@@ -3197,7 +3269,7 @@ class _SimpleDataCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 5),
-                  Text(
+                  LocalizedText(
                     subtitle,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
@@ -3207,7 +3279,10 @@ class _SimpleDataCard extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 7),
-            Text(trailing, style: const TextStyle(color: _muted, fontSize: 11)),
+            LocalizedText(
+              trailing,
+              style: const TextStyle(color: _muted, fontSize: 11),
+            ),
           ],
         ),
       ),
@@ -3227,7 +3302,9 @@ class _PatientDetailsSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Directionality(
-      textDirection: TextDirection.rtl,
+      textDirection: context.l10n.isArabic
+          ? TextDirection.rtl
+          : TextDirection.ltr,
       child: Container(
         padding: EdgeInsets.fromLTRB(
           22,
@@ -3251,7 +3328,7 @@ class _PatientDetailsSheet extends StatelessWidget {
               borderWidth: 3,
             ),
             const SizedBox(height: 11),
-            Text(
+            LocalizedText(
               appointment.patientName,
               style: const TextStyle(
                 color: _ink,
@@ -3296,7 +3373,7 @@ class _PatientDetailsSheet extends StatelessWidget {
                 child: FilledButton.icon(
                   onPressed: onStart,
                   icon: const Icon(Icons.medical_services_outlined),
-                  label: const Text('بدء المعاينة'),
+                  label: const LocalizedText('بدء المعاينة'),
                   style: FilledButton.styleFrom(
                     backgroundColor: _teal,
                     minimumSize: const Size.fromHeight(52),
@@ -3337,13 +3414,13 @@ class _DetailsRow extends StatelessWidget {
           const SizedBox(width: 10),
           SizedBox(
             width: 77,
-            child: Text(
+            child: LocalizedText(
               label,
               style: const TextStyle(color: _muted, fontSize: 12.5),
             ),
           ),
           Expanded(
-            child: Text(
+            child: LocalizedText(
               value,
               style: const TextStyle(
                 color: _ink,
@@ -3410,7 +3487,9 @@ class _VisitCompletionPageState extends State<_VisitCompletionPage> {
   Widget build(BuildContext context) {
     final dashboard = context.watch<DoctorDashboardCubit>().state;
     return Directionality(
-      textDirection: TextDirection.rtl,
+      textDirection: context.l10n.isArabic
+          ? TextDirection.rtl
+          : TextDirection.ltr,
       child: Scaffold(
         backgroundColor: _background,
         body: SafeArea(
@@ -3525,7 +3604,7 @@ class _VisitCompletionPageState extends State<_VisitCompletionPage> {
                           width: double.infinity,
                           padding: const EdgeInsets.all(18),
                           decoration: _whiteCardDecoration(20),
-                          child: const Text(
+                          child: const LocalizedText(
                             'لم تتم إضافة أدوية إلى الوصفة.',
                             textAlign: TextAlign.center,
                             style: TextStyle(color: _muted),
@@ -3535,7 +3614,7 @@ class _VisitCompletionPageState extends State<_VisitCompletionPage> {
                       OutlinedButton.icon(
                         onPressed: () => _showAddMedicine(dashboard.medicines),
                         icon: const Icon(Icons.add_circle_outline_rounded),
-                        label: const Text('إضافة دواء'),
+                        label: const LocalizedText('إضافة دواء'),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: _teal,
                           side: const BorderSide(color: Color(0x77047C87)),
@@ -3711,7 +3790,9 @@ class _VisitCompletionPageState extends State<_VisitCompletionPage> {
       backgroundColor: _background,
       showDragHandle: true,
       builder: (_) => Directionality(
-        textDirection: TextDirection.rtl,
+        textDirection: context.l10n.isArabic
+            ? TextDirection.rtl
+            : TextDirection.ltr,
         child: Padding(
           padding: const EdgeInsets.all(18),
           child: records.isEmpty
@@ -3756,7 +3837,7 @@ class _VisitHeader extends StatelessWidget {
             ),
           ),
           const Expanded(
-            child: Text(
+            child: LocalizedText(
               'إتمام الزيارة',
               textAlign: TextAlign.center,
               style: TextStyle(
@@ -3807,7 +3888,7 @@ class _VisitPatientCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                LocalizedText(
                   appointment.patientName,
                   style: const TextStyle(
                     color: _ink,
@@ -3816,19 +3897,19 @@ class _VisitPatientCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 5),
-                Text(
+                LocalizedText(
                   '${_formatDate(appointment.date)} • ${_displayTime(appointment.time)} • ${appointment.durationMinutes} دقيقة',
                   style: const TextStyle(color: _muted, fontSize: 12.5),
                 ),
                 const SizedBox(height: 4),
-                Text(
+                LocalizedText(
                   appointment.visitType,
                   style: const TextStyle(color: _muted, fontSize: 12.5),
                 ),
                 TextButton.icon(
                   onPressed: onMedicalFile,
                   icon: const Icon(Icons.chevron_left_rounded, size: 18),
-                  label: const Text('عرض الملف الطبي'),
+                  label: const LocalizedText('عرض الملف الطبي'),
                   style: TextButton.styleFrom(
                     padding: EdgeInsets.zero,
                     foregroundColor: _teal,
@@ -3874,7 +3955,7 @@ class _VisitSectionSwitch extends StatelessWidget {
                   color: active ? _teal : Colors.transparent,
                   borderRadius: BorderRadius.circular(27),
                 ),
-                child: Text(
+                child: LocalizedText(
                   labels[index],
                   style: TextStyle(
                     color: active ? Colors.white : _muted,
@@ -3898,7 +3979,7 @@ class _VisitSectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Text(
+    return LocalizedText(
       title,
       style: const TextStyle(
         color: _deepTeal,
@@ -3939,7 +4020,9 @@ class _AddMedicineSheetState extends State<_AddMedicineSheet> {
   @override
   Widget build(BuildContext context) {
     return Directionality(
-      textDirection: TextDirection.rtl,
+      textDirection: context.l10n.isArabic
+          ? TextDirection.rtl
+          : TextDirection.ltr,
       child: AnimatedPadding(
         duration: const Duration(milliseconds: 180),
         curve: Curves.easeOut,
@@ -3962,7 +4045,7 @@ class _AddMedicineSheetState extends State<_AddMedicineSheet> {
                   const SizedBox(height: 17),
                   const Align(
                     alignment: Alignment.centerRight,
-                    child: Text(
+                    child: LocalizedText(
                       'إضافة دواء إلى الوصفة',
                       style: TextStyle(
                         color: _ink,
@@ -4007,7 +4090,7 @@ class _AddMedicineSheetState extends State<_AddMedicineSheet> {
                     child: FilledButton.icon(
                       onPressed: _submit,
                       icon: const Icon(Icons.add_rounded),
-                      label: const Text('إضافة الدواء'),
+                      label: const LocalizedText('إضافة الدواء'),
                       style: FilledButton.styleFrom(
                         backgroundColor: _teal,
                         minimumSize: const Size.fromHeight(52),
@@ -4070,7 +4153,7 @@ class _MedicineTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                LocalizedText(
                   '${medicine.name} ${medicine.dosage}',
                   style: const TextStyle(
                     color: _ink,
@@ -4078,7 +4161,7 @@ class _MedicineTile extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 4),
-                Text(
+                LocalizedText(
                   '${medicine.frequency} • ${medicine.duration}',
                   style: const TextStyle(color: _muted, fontSize: 12),
                 ),
@@ -4134,7 +4217,7 @@ class _ReferralCard extends StatelessWidget {
               ),
             ],
           ),
-          Text(
+          LocalizedText(
             label,
             maxLines: 1,
             style: const TextStyle(color: _ink, fontSize: 11.5),
@@ -4186,7 +4269,9 @@ class _VisitActions extends StatelessWidget {
                       ),
                     )
                   : const Icon(Icons.assignment_turned_in_outlined),
-              label: Text(loading ? 'جارٍ الحفظ...' : 'حفظ وإنهاء الزيارة'),
+              label: LocalizedText(
+                loading ? 'جارٍ الحفظ...' : 'حفظ وإنهاء الزيارة',
+              ),
               style: FilledButton.styleFrom(
                 backgroundColor: _teal,
                 minimumSize: const Size.fromHeight(52),
@@ -4201,7 +4286,7 @@ class _VisitActions extends StatelessWidget {
             child: OutlinedButton.icon(
               onPressed: loading ? null : onSaveDraft,
               icon: const Icon(Icons.save_outlined),
-              label: const Text('حفظ كمسودة'),
+              label: const LocalizedText('حفظ كمسودة'),
               style: OutlinedButton.styleFrom(
                 foregroundColor: _teal,
                 side: const BorderSide(color: _teal),
@@ -4254,7 +4339,9 @@ class _ExaminationSheetState extends State<_ExaminationSheet> {
   @override
   Widget build(BuildContext context) {
     return Directionality(
-      textDirection: TextDirection.rtl,
+      textDirection: context.l10n.isArabic
+          ? TextDirection.rtl
+          : TextDirection.ltr,
       child: Container(
         constraints: BoxConstraints(
           maxHeight: MediaQuery.sizeOf(context).height * .92,
@@ -4277,7 +4364,7 @@ class _ExaminationSheetState extends State<_ExaminationSheet> {
               children: [
                 const Center(child: _SheetHandle()),
                 const SizedBox(height: 18),
-                Text(
+                LocalizedText(
                   'معاينة ${widget.appointment.patientName}',
                   style: const TextStyle(
                     color: _ink,
@@ -4286,7 +4373,7 @@ class _ExaminationSheetState extends State<_ExaminationSheet> {
                   ),
                 ),
                 const SizedBox(height: 5),
-                const Text(
+                const LocalizedText(
                   'أدخل بيانات السجل الطبي بدقة',
                   style: TextStyle(color: _muted, fontSize: 13.5),
                 ),
@@ -4338,7 +4425,7 @@ class _ExaminationSheetState extends State<_ExaminationSheet> {
                   onChanged: (value) => setState(() => _toPharmacy = value),
                   activeTrackColor: _teal,
                   contentPadding: EdgeInsets.zero,
-                  title: const Text(
+                  title: const LocalizedText(
                     'إحالة إلى الصيدلية',
                     style: TextStyle(color: _ink, fontWeight: FontWeight.w700),
                   ),
@@ -4352,7 +4439,7 @@ class _ExaminationSheetState extends State<_ExaminationSheet> {
                   onChanged: (value) => setState(() => _toLaboratory = value),
                   activeTrackColor: _teal,
                   contentPadding: EdgeInsets.zero,
-                  title: const Text(
+                  title: const LocalizedText(
                     'إحالة إلى المختبر',
                     style: TextStyle(color: _ink, fontWeight: FontWeight.w700),
                   ),
@@ -4380,7 +4467,7 @@ class _ExaminationSheetState extends State<_ExaminationSheet> {
                             ),
                           )
                         : const Icon(Icons.save_outlined),
-                    label: Text(
+                    label: LocalizedText(
                       state.actionLoading
                           ? 'جارٍ الحفظ...'
                           : 'حفظ وإنهاء المعاينة',
@@ -4449,11 +4536,11 @@ class _Input extends StatelessWidget {
         keyboardType: keyboardType,
         validator: required
             ? (value) => value == null || value.trim().isEmpty
-                  ? 'هذا الحقل مطلوب'
+                  ? context.tr('هذا الحقل مطلوب')
                   : null
             : null,
         decoration: InputDecoration(
-          labelText: label,
+          labelText: context.tr(label),
           prefixIcon: Icon(icon, color: _teal),
           filled: true,
           fillColor: Colors.white,
@@ -4535,7 +4622,7 @@ class _DoctorBottomBar extends StatelessWidget {
                         size: 24,
                       ),
                       const SizedBox(height: 1),
-                      Text(
+                      LocalizedText(
                         item.$3,
                         style: TextStyle(
                           color: selected ? _teal : const Color(0xFF596A75),
@@ -4582,7 +4669,7 @@ class _Avatar extends StatelessWidget {
     final fallback = Container(
       color: _paleTeal,
       alignment: Alignment.center,
-      child: Text(
+      child: LocalizedText(
         initials.isEmpty ? 'ط' : initials,
         style: TextStyle(
           color: _deepTeal,
@@ -4655,7 +4742,7 @@ class _EmptyState extends StatelessWidget {
       children: [
         Icon(icon, color: color, size: 36),
         const SizedBox(height: 9),
-        Text(
+        LocalizedText(
           message,
           textAlign: TextAlign.center,
           style: TextStyle(
@@ -4714,7 +4801,7 @@ class _FailureView extends StatelessWidget {
             children: [
               const Icon(Icons.cloud_off_outlined, color: _teal, size: 52),
               const SizedBox(height: 15),
-              Text(
+              LocalizedText(
                 message,
                 textAlign: TextAlign.center,
                 style: const TextStyle(color: _muted, fontSize: 15),
@@ -4723,7 +4810,7 @@ class _FailureView extends StatelessWidget {
               FilledButton.icon(
                 onPressed: onRetry,
                 icon: const Icon(Icons.refresh_rounded),
-                label: const Text('إعادة المحاولة'),
+                label: const LocalizedText('إعادة المحاولة'),
                 style: FilledButton.styleFrom(backgroundColor: _teal),
               ),
             ],

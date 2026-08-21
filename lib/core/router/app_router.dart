@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:nabad/screens/HomePage_patient/doctor/doctor_profile_booking_screen.dart';
-import 'package:nabad/screens/HomePage_patient/doctor/doctors_screen.dart';
 import 'package:nabad/screens/HomePage_patient/homepage_p.dart';
 import 'package:nabad/screens/HomePage_patient/patient_profile_screen.dart';
 import 'package:nabad/screens/before_home/account_type_screen.dart';
@@ -33,7 +32,6 @@ class AppRoutes {
   static const String doctorHome = '/doctor_home';
   static const String patientHome = '/patient_home';
   static const String patientProfile = '/patient_profile';
-  static const String doctors = '/doctors';
   static const String appointments = '/appointments';
   static const String bookingDetail = '/booking_detail';
   static const String doctorProfileBooking = '/doctor_profile_booking';
@@ -71,8 +69,6 @@ class AppRouter {
         return MaterialPageRoute(builder: (_) => const PatientHomePage());
       case AppRoutes.patientProfile:
         return MaterialPageRoute(builder: (_) => const PatientProfileScreen());
-      case AppRoutes.doctors:
-        return MaterialPageRoute(builder: (_) => const DoctorsScreen());
       case AppRoutes.appointments:
         return MaterialPageRoute(builder: (_) => const AppointmentsScreen());
       case AppRoutes.wallet:
@@ -96,7 +92,7 @@ class AppRouter {
             builder: (_) => BookingDetailScreen(doctor: doctor),
           );
         }
-        return MaterialPageRoute(builder: (_) => const DoctorsScreen());
+        return MaterialPageRoute(builder: (_) => const PatientHomePage());
       case AppRoutes.doctorProfileBooking:
         final doctor = settings.arguments;
         if (doctor is DoctorModel) {

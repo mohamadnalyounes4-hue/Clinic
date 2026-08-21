@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:nabad/Cubits/cubits/appointment_cubit.dart';
@@ -11,6 +9,7 @@ import '../../Models/doctor_model.dart';
 import '../../Models/doctor_availability_model.dart';
 import '../../Models/points_model.dart';
 import '../../core/Error/exceptions.dart';
+import '../../core/localization/app_localizations.dart';
 import '../../core/theme/nabd_colors.dart';
 
 class BookingDetailScreen extends StatefulWidget {
@@ -37,7 +36,6 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
   PointsRedemptionPreviewModel? _serverPreview;
   bool _isPreviewLoading = false;
   String? _previewError;
-  Timer? _previewDebounce;
 
   @override
   void initState() {
@@ -45,12 +43,6 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
     context.read<PointsCubit>().getPointsSummary();
     context.read<WalletCubit>().loadWallet();
     _loadDoctorSchedule();
-  }
-
-  @override
-  void dispose() {
-    _previewDebounce?.cancel();
-    super.dispose();
   }
 
   Future<void> _loadDoctorSchedule() async {
@@ -71,10 +63,17 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
       final firstAvailable = _days.indexWhere(
         (day) => day['isAvailable'] == true,
       );
+      String? bookingBlockReason;
+      for (final item in dates) {
+        if (item.bookingBlockReason != null) {
+          bookingBlockReason = item.bookingBlockReason;
+          break;
+        }
+      }
       if (!mounted) return;
       setState(() {
         _selectedDayIndex = firstAvailable < 0 ? 0 : firstAvailable;
-        _scheduleError = null;
+        _scheduleError = _bookingBlockMessage(bookingBlockReason);
       });
       await _loadAvailabilityForSelectedDate();
     } catch (_) {
@@ -107,6 +106,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
             .where((slot) => slot.available)
             .toList();
         _isScheduleLoading = false;
+        _scheduleError = _bookingBlockMessage(availability.bookingBlockReason);
         _syncTimeSelection();
       });
     } catch (_) {
@@ -123,6 +123,14 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
       '${date.year.toString().padLeft(4, '0')}-'
       '${date.month.toString().padLeft(2, '0')}-'
       '${date.day.toString().padLeft(2, '0')}';
+
+  String? _bookingBlockMessage(String? reason) {
+    if (reason == 'same_specialty') {
+      return 'لديك موعد قادم في نفس الاختصاص. يمكنك الحجز بعد انتهاء الموعد الحالي أو إلغائه.';
+    }
+
+    return null;
+  }
 
   bool _isTimeInPast(DateTime day, String time) {
     final now = DateTime.now();
@@ -253,7 +261,9 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return Directionality(
-      textDirection: TextDirection.rtl,
+      textDirection: context.l10n.isArabic
+          ? TextDirection.rtl
+          : TextDirection.ltr,
       child: Scaffold(
         backgroundColor: NabadColors.background,
         bottomNavigationBar: _buildConfirmBar(),
@@ -296,30 +306,31 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
 
   double get _consultationFee => widget.doctor.consultationFee ?? 0;
 
-  PointsSummaryModel? get _pointsSummary {
-    final state = context.read<PointsCubit>().state;
-    return state is PointsSuccess ? state.summary : null;
-  }
+  double get _discountPercent => _pointsToRedeem == 0
+      ? 0
+      : (_serverPreview?.discountPercentage ??
+            LoyaltyPolicy.discountPercentage);
 
-  double get _discountPercent =>
-      _serverPreview?.discountPercentage ??
-      (_pointsSummary?.discountPercentFor(_pointsToRedeem) ?? 0);
+  double get _discountAmount => _pointsToRedeem == 0
+      ? 0
+      : (_serverPreview?.discountAmount ??
+            LoyaltyPolicy.discountAmount(_consultationFee));
 
-  double get _discountAmount =>
-      _serverPreview?.discountAmount ??
-      (_consultationFee * _discountPercent / 100);
-
-  double get _finalPrice =>
-      _serverPreview?.finalPrice ?? (_consultationFee - _discountAmount);
+  double get _finalPrice => _pointsToRedeem == 0
+      ? _consultationFee
+      : (_serverPreview?.finalPrice ??
+            LoyaltyPolicy.finalPrice(_consultationFee));
 
   bool get _isPreviewValid =>
       _pointsToRedeem == 0 ||
       (!_isPreviewLoading &&
           _previewError == null &&
-          _serverPreview?.pointsRedeemed == _pointsToRedeem);
+          _serverPreview?.matchesLoyaltyPolicy(
+                consultationFee: _consultationFee,
+              ) ==
+              true);
 
   void _changePoints(int value) {
-    _previewDebounce?.cancel();
     setState(() {
       _pointsToRedeem = value;
       _serverPreview = null;
@@ -327,10 +338,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
       _isPreviewLoading = value > 0;
     });
     if (value <= 0) return;
-    _previewDebounce = Timer(
-      const Duration(milliseconds: 350),
-      () => _loadPointsPreview(value),
-    );
+    _loadPointsPreview(value);
   }
 
   Future<void> _loadPointsPreview(int requestedPoints) async {
@@ -346,6 +354,15 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
         pointsToRedeem: requestedPoints,
       );
       if (!mounted || requestedPoints != _pointsToRedeem) return;
+      if (!preview.matchesLoyaltyPolicy(consultationFee: _consultationFee)) {
+        setState(() {
+          _serverPreview = null;
+          _isPreviewLoading = false;
+          _previewError =
+              'إعدادات الخصم على الخادم لا تطابق 40 نقطة مقابل خصم 30%';
+        });
+        return;
+      }
       setState(() {
         _serverPreview = preview;
         _isPreviewLoading = false;
@@ -376,16 +393,6 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
   bool get _hasInsufficientBalance =>
       _walletBalance != null && _walletBalance! < _finalPrice;
 
-  int _maxUsablePoints(PointsSummaryModel summary) {
-    final byBalance = summary.pointsBalance;
-    final byMaxDiscount = summary.pointsForMaxDiscount;
-    final capped = byBalance < byMaxDiscount ? byBalance : byMaxDiscount;
-    final unit = summary.pointsPerUnit;
-    if (unit <= 0 || capped <= 0) return 0;
-    // نقرّب لأسفل لأقرب مضاعف لوحدة النقاط عشان الخصم يطلع مظبوط بالمعادلة
-    return (capped ~/ unit) * unit;
-  }
-
   Widget _buildPointsSection() {
     return BlocBuilder<PointsCubit, PointsState>(
       builder: (context, state) {
@@ -408,8 +415,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
         }
 
         final summary = state.summary;
-        final maxUsable = _maxUsablePoints(summary);
-        if (maxUsable <= 0) {
+        if (!LoyaltyPolicy.canRedeem(summary.pointsBalance)) {
           // مفيش نقاط كفاية لأي خصم فعلي
           return const SizedBox.shrink();
         }
@@ -430,64 +436,20 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      IconButton(
-                        onPressed: _pointsToRedeem >= maxUsable
-                            ? null
-                            : () => _changePoints(
-                                (_pointsToRedeem + summary.pointsPerUnit).clamp(
-                                  0,
-                                  maxUsable,
-                                ),
-                              ),
-                        icon: const Icon(Icons.add_circle_outline_rounded),
-                        color: NabadColors.primary,
-                        visualDensity: VisualDensity.compact,
-                      ),
-                      SizedBox(
-                        width: 44,
-                        child: Text(
-                          '$_pointsToRedeem',
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800,
-                            color: NabadColors.darkText,
-                          ),
-                        ),
-                      ),
-                      IconButton(
-                        onPressed: _pointsToRedeem <= 0
-                            ? null
-                            : () => _changePoints(
-                                (_pointsToRedeem - summary.pointsPerUnit).clamp(
-                                  0,
-                                  maxUsable,
-                                ),
-                              ),
-                        icon: const Icon(Icons.remove_circle_outline_rounded),
-                        color: NabadColors.mutedText,
-                        visualDensity: VisualDensity.compact,
-                      ),
-                    ],
-                  ),
-                  const Text(
-                    'استخدم نقاطك',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800,
-                      color: NabadColors.darkText,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 4),
               Text(
-                'رصيدك: ${summary.pointsBalance} نقطة (كل ${summary.pointsPerUnit} نقطة = ${summary.discountPerUnit.toStringAsFixed(0)}% خصم، بحد أقصى ${summary.maxDiscountPercent.toStringAsFixed(0)}%)',
+                context.tr('اختر طريقة الحجز'),
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w900,
+                  color: NabadColors.darkText,
+                ),
+              ),
+              const SizedBox(height: 5),
+              Text(
+                context.tr(
+                  'رصيدك {balance} نقطة — كل موعد تحجزه يمنحك 20 نقطة بعد اكتماله',
+                  {'balance': summary.pointsBalance},
+                ),
                 textAlign: TextAlign.right,
                 style: const TextStyle(
                   fontSize: 11,
@@ -495,12 +457,31 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                   height: 1.5,
                 ),
               ),
+              const SizedBox(height: 12),
+              _buildBookingPriceOption(
+                selected: _pointsToRedeem == 0,
+                title: context.tr('حجز عادي بالسعر الكامل'),
+                subtitle: context.tr('احتفظ بنقاطك لاستخدامها لاحقاً'),
+                price: _consultationFee,
+                onTap: () => _changePoints(0),
+              ),
+              const SizedBox(height: 10),
+              _buildBookingPriceOption(
+                selected:
+                    _pointsToRedeem == LoyaltyPolicy.pointsRequiredForDiscount,
+                title: context.tr('استخدام 40 نقطة'),
+                subtitle: context.tr('خصم 30% على هذا الحجز'),
+                price: LoyaltyPolicy.finalPrice(_consultationFee),
+                originalPrice: _consultationFee,
+                onTap: () =>
+                    _changePoints(LoyaltyPolicy.pointsRequiredForDiscount),
+              ),
               if (_pointsToRedeem > 0) ...[
                 const SizedBox(height: 10),
                 const Divider(color: NabadColors.divider, height: 1),
                 const SizedBox(height: 10),
                 if (_isPreviewLoading)
-                  const Row(
+                  Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
                       SizedBox(
@@ -510,8 +491,8 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                       ),
                       SizedBox(width: 8),
                       Text(
-                        'جاري التحقق من الخصم...',
-                        style: TextStyle(
+                        context.tr('جاري التحقق من الخصم...'),
+                        style: const TextStyle(
                           color: NabadColors.mutedText,
                           fontSize: 12,
                         ),
@@ -523,7 +504,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                     children: [
                       Expanded(
                         child: Text(
-                          _previewError!,
+                          context.tr(_previewError!),
                           textAlign: TextAlign.right,
                           style: TextStyle(
                             color: Colors.red.shade700,
@@ -533,7 +514,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                         ),
                       ),
                       IconButton(
-                        tooltip: 'إعادة المحاولة',
+                        tooltip: context.tr('إعادة المحاولة'),
                         onPressed: () => _loadPointsPreview(_pointsToRedeem),
                         icon: const Icon(Icons.refresh_rounded),
                         color: NabadColors.primary,
@@ -546,7 +527,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        '- ${_discountAmount.toStringAsFixed(0)} ر.س',
+                        '- ${_discountAmount.toStringAsFixed(0)} ${context.tr('ر.س')}',
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w800,
@@ -562,7 +543,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            'خصم ${_discountPercent.toStringAsFixed(0)}%',
+                            '${context.tr('خصم')} ${_discountPercent.toStringAsFixed(0)}%',
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
@@ -578,6 +559,94 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildBookingPriceOption({
+    required bool selected,
+    required String title,
+    required String subtitle,
+    required double price,
+    required VoidCallback onTap,
+    double? originalPrice,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        width: double.infinity,
+        padding: const EdgeInsets.all(13),
+        decoration: BoxDecoration(
+          color: selected
+              ? NabadColors.primary.withAlpha(14)
+              : NabadColors.background,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: selected ? NabadColors.primary : NabadColors.divider,
+            width: selected ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              selected
+                  ? Icons.radio_button_checked_rounded
+                  : Icons.radio_button_off_rounded,
+              color: selected ? NabadColors.primary : NabadColors.mutedText,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: NabadColors.darkText,
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      color: NabadColors.mutedText,
+                      fontSize: 11.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                if (originalPrice != null)
+                  Text(
+                    '${originalPrice.toStringAsFixed(0)} ${context.tr('ر.س')}',
+                    style: const TextStyle(
+                      color: NabadColors.mutedText,
+                      fontSize: 10.5,
+                      decoration: TextDecoration.lineThrough,
+                    ),
+                  ),
+                Text(
+                  '${price.toStringAsFixed(0)} ${context.tr('ر.س')}',
+                  style: TextStyle(
+                    color: selected
+                        ? NabadColors.primary
+                        : NabadColors.darkText,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -610,13 +679,12 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
         // العنوان + زر الرجوع
         Row(
           children: [
-            const Text(
-              'نبض',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
-                color: NabadColors.darkText,
-              ),
+            Image.asset(
+              'assets/images/logo.png',
+              width: 72,
+              height: 38,
+              fit: BoxFit.contain,
+              semanticLabel: 'Nabd',
             ),
             const SizedBox(width: 4),
             GestureDetector(
@@ -649,7 +717,9 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
         ],
       ),
       child: Row(
-        textDirection: TextDirection.rtl,
+        textDirection: context.l10n.isArabic
+            ? TextDirection.rtl
+            : TextDirection.ltr,
         children: [
           // أيقونة الرسالة
           Container(
@@ -673,7 +743,8 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  'د. ${widget.doctor.fullName}'.trim(),
+                  '${context.l10n.isArabic ? 'د.' : 'Dr.'} ${widget.doctor.fullName}'
+                      .trim(),
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
@@ -683,8 +754,8 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                 const SizedBox(height: 2),
                 Text(
                   (widget.doctor.specialization ?? '').trim().isEmpty
-                      ? 'طبيب مختص'
-                      : widget.doctor.specialization!.trim(),
+                      ? context.tr('طبيب مختص')
+                      : context.tr(widget.doctor.specialization!.trim()),
                   textAlign: TextAlign.right,
                   style: const TextStyle(
                     fontSize: 12,
@@ -720,9 +791,9 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                       color: NabadColors.primary,
                       borderRadius: BorderRadius.circular(50),
                     ),
-                    child: const Text(
-                      'متاح',
-                      style: TextStyle(
+                    child: Text(
+                      context.tr('متاح'),
+                      style: const TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w700,
                         color: NabadColors.white,
@@ -790,7 +861,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                   ),
                   const SizedBox(width: 4),
                   Text(
-                    '${_monthName(_selectedDate.month)} ${_selectedDate.year}',
+                    '${context.tr(_monthName(_selectedDate.month))} ${_selectedDate.year}',
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
@@ -800,9 +871,9 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                 ],
               ),
             ),
-            const Text(
-              'اختر التاريخ',
-              style: TextStyle(
+            Text(
+              context.tr('اختر التاريخ'),
+              style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
                 color: NabadColors.darkText,
@@ -854,7 +925,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                       child: Column(
                         children: [
                           Text(
-                            _days[i]['name'] as String,
+                            context.tr(_days[i]['name'] as String),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
@@ -899,26 +970,37 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             // زرا الصباح والمساء
-            Container(
-              padding: const EdgeInsets.all(3),
-              decoration: BoxDecoration(
-                color: NabadColors.white,
-                borderRadius: BorderRadius.circular(50),
-                border: Border.all(color: NabadColors.divider),
-              ),
-              child: Row(
-                children: [
-                  _periodTab('المسائية', false),
-                  _periodTab('الصباحية', true),
-                ],
+            Flexible(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: AlignmentDirectional.centerStart,
+                child: Container(
+                  padding: const EdgeInsets.all(3),
+                  decoration: BoxDecoration(
+                    color: NabadColors.white,
+                    borderRadius: BorderRadius.circular(50),
+                    border: Border.all(color: NabadColors.divider),
+                  ),
+                  child: Row(
+                    children: [
+                      _periodTab(context.tr('المسائية'), false),
+                      _periodTab(context.tr('الصباحية'), true),
+                    ],
+                  ),
+                ),
               ),
             ),
-            const Text(
-              'الفترات المتاحة',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: NabadColors.darkText,
+            const SizedBox(width: 10),
+            Flexible(
+              child: Text(
+                context.tr('الفترات المتاحة'),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: NabadColors.darkText,
+                ),
               ),
             ),
           ],
@@ -947,7 +1029,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
               border: Border.all(color: NabadColors.divider),
             ),
             child: Text(
-              _scheduleError ?? 'لا توجد فترات متاحة لهذا اليوم',
+              context.tr(_scheduleError ?? 'لا توجد فترات متاحة لهذا اليوم'),
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 13,
@@ -1013,7 +1095,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                           ),
                         ),
                         Text(
-                          isPast ? 'فات الوقت' : label,
+                          isPast ? context.tr('فات الوقت') : context.tr(label),
                           style: const TextStyle(
                             fontSize: 10,
                             color: NabadColors.mutedText,
@@ -1074,7 +1156,9 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
         border: Border.all(color: NabadColors.divider),
       ),
       child: Row(
-        textDirection: TextDirection.rtl,
+        textDirection: context.l10n.isArabic
+            ? TextDirection.rtl
+            : TextDirection.ltr,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Icon(
@@ -1086,20 +1170,22 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.end,
-              children: const [
+              children: [
                 Text(
-                  'ملاحظة طبية',
-                  style: TextStyle(
+                  context.tr('ملاحظة طبية'),
+                  style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
                     color: NabadColors.darkText,
                   ),
                 ),
-                SizedBox(height: 4),
+                const SizedBox(height: 4),
                 Text(
-                  'يرجى إحضار التقارير الطبية السابقة إذا كانت متوفرة.',
+                  context.tr(
+                    'يرجى إحضار التقارير الطبية السابقة إذا كانت متوفرة.',
+                  ),
                   textAlign: TextAlign.right,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 12,
                     color: NabadColors.mutedText,
                     height: 1.5,
@@ -1115,11 +1201,11 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
 
   // ── شريط التأكيد السفلي ──
   Widget _buildConfirmBar() {
-    final period = _isMorning ? 'ص' : 'م';
-    final monthLabel = _monthName(_selectedDate.month);
+    final period = context.tr(_isMorning ? 'ص' : 'م');
+    final monthLabel = context.tr(_monthName(_selectedDate.month));
     final dayLabel = _hasSelectedTime
-        ? '$_selectedDayName $_selectedDayNum $monthLabel، $_selectedTime $period'
-        : '$_selectedDayName $_selectedDayNum $monthLabel — لم يتم اختيار وقت';
+        ? '${context.tr(_selectedDayName)} $_selectedDayNum $monthLabel، $_selectedTime $period'
+        : '${context.tr(_selectedDayName)} $_selectedDayNum $monthLabel — ${context.tr('لم يتم اختيار وقت')}';
 
     return BlocBuilder<WalletCubit, WalletState>(
       builder: (context, walletState) {
@@ -1149,34 +1235,41 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   // التاريخ المختار
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'التاريخ المختار',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: NabadColors.mutedText,
-                          fontWeight: FontWeight.w500,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          context.tr('التاريخ المختار'),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: NabadColors.mutedText,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
-                      ),
-                      Text(
-                        dayLabel,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: NabadColors.darkText,
+                        Text(
+                          dayLabel,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: NabadColors.darkText,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
+                  const SizedBox(width: 12),
                   // السعر
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      const Text(
-                        'قيمة الكشف',
-                        style: TextStyle(
+                      Text(
+                        context.tr('قيمة الكشف'),
+                        style: const TextStyle(
                           fontSize: 11,
                           color: NabadColors.mutedText,
                           fontWeight: FontWeight.w500,
@@ -1184,7 +1277,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                       ),
                       if (_pointsToRedeem > 0) ...[
                         Text(
-                          '${_consultationFee.toStringAsFixed(0)} ر.س',
+                          '${_consultationFee.toStringAsFixed(0)} ${context.tr('ر.س')}',
                           style: const TextStyle(
                             fontSize: 12,
                             color: NabadColors.mutedText,
@@ -1192,7 +1285,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                           ),
                         ),
                         Text(
-                          '${_finalPrice.toStringAsFixed(0)} ر.س',
+                          '${_finalPrice.toStringAsFixed(0)} ${context.tr('ر.س')}',
                           style: const TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.w800,
@@ -1201,7 +1294,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                         ),
                       ] else
                         Text(
-                          '${_consultationFee.toStringAsFixed(0)} ر.س',
+                          '${_consultationFee.toStringAsFixed(0)} ${context.tr('ر.س')}',
                           style: const TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.w800,
@@ -1221,7 +1314,10 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'رصيد محفظتك: ${walletBalance.toStringAsFixed(0)} ر.س',
+                      context.tr('رصيد محفظتك: {balance} {currency}', {
+                        'balance': walletBalance.toStringAsFixed(0),
+                        'currency': context.tr('ر.س'),
+                      }),
                       style: TextStyle(
                         fontSize: 11.5,
                         fontWeight: FontWeight.w700,
@@ -1232,7 +1328,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                     ),
                     if (insufficientBalance)
                       Text(
-                        'الرصيد غير كافٍ لإتمام الحجز',
+                        context.tr('الرصيد غير كافٍ لإتمام الحجز'),
                         style: TextStyle(
                           fontSize: 11.5,
                           fontWeight: FontWeight.w800,
@@ -1268,19 +1364,21 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                         )
                       : const Icon(Icons.calendar_month_rounded, size: 18),
                   label: Text(
-                    _isBooking
-                        ? 'جاري الحجز...'
-                        : _isPreviewLoading
-                        ? 'جاري التحقق من الخصم...'
-                        : _previewError != null
-                        ? 'تحقق من خصم النقاط'
-                        : !_hasSelectedTime
-                        ? 'لا توجد فترات متاحة'
-                        : _isSelectedTimeInPast
-                        ? 'اختر وقتاً لم يفت بعد'
-                        : insufficientBalance
-                        ? 'رصيد المحفظة غير كافٍ'
-                        : 'تأكيد الحجز',
+                    context.tr(
+                      _isBooking
+                          ? 'جاري الحجز...'
+                          : _isPreviewLoading
+                          ? 'جاري التحقق من الخصم...'
+                          : _previewError != null
+                          ? 'تحقق من خصم النقاط'
+                          : !_hasSelectedTime
+                          ? 'لا توجد فترات متاحة'
+                          : _isSelectedTimeInPast
+                          ? 'اختر وقتاً لم يفت بعد'
+                          : insufficientBalance
+                          ? 'رصيد المحفظة غير كافٍ'
+                          : 'تأكيد الحجز',
+                    ),
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: NabadColors.primary,
@@ -1318,8 +1416,21 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
           doctorId: widget.doctor.id,
           pointsToRedeem: _pointsToRedeem,
         );
-        if (preview.pointsRedeemed != _pointsToRedeem) {
-          throw StateError('The server changed the redeemed points amount');
+        if (!preview.matchesLoyaltyPolicy(consultationFee: _consultationFee)) {
+          if (!mounted) return;
+          setState(() {
+            _serverPreview = null;
+            _previewError =
+                'إعدادات الخصم على الخادم لا تطابق 40 نقطة مقابل خصم 30%';
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(context.tr(_previewError!)),
+              backgroundColor: Colors.red.shade700,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+          return;
         }
         if (!mounted) return;
         setState(() => _serverPreview = preview);
@@ -1346,7 +1457,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('تعذر إتمام الحجز، حاول مرة أخرى'),
+          content: Text(context.tr('تعذر إتمام الحجز، حاول مرة أخرى')),
           backgroundColor: Colors.red.shade700,
           behavior: SnackBarBehavior.floating,
         ),
@@ -1357,12 +1468,14 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
   }
 
   void _showSuccessDialog() {
-    final period = _isMorning ? 'صباحاً' : 'مساءً';
-    final monthLabel = _monthName(_selectedDate.month);
+    final period = context.tr(_isMorning ? 'صباحاً' : 'مساءً');
+    final monthLabel = context.tr(_monthName(_selectedDate.month));
     showDialog(
       context: context,
       builder: (_) => Directionality(
-        textDirection: TextDirection.rtl,
+        textDirection: context.l10n.isArabic
+            ? TextDirection.rtl
+            : TextDirection.ltr,
         child: AlertDialog(
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
@@ -1384,9 +1497,9 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              const Text(
-                'تم إرسال طلب الحجز',
-                style: TextStyle(
+              Text(
+                context.tr('تم إرسال طلب الحجز'),
+                style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
                   color: NabadColors.darkText,
@@ -1394,7 +1507,16 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                'طلبك مع د. ${widget.doctor.fullName}\n$_selectedDayNum $monthLabel الساعة $_selectedTime $period\nبانتظار موافقة السكرتاريا',
+                context.tr(
+                  'طلبك مع {doctor}\n{date} الساعة {time} {period}\nبانتظار موافقة السكرتاريا',
+                  {
+                    'doctor':
+                        '${context.l10n.isArabic ? 'د.' : 'Dr.'} ${widget.doctor.fullName}',
+                    'date': '$_selectedDayNum $monthLabel',
+                    'time': _selectedTime,
+                    'period': period,
+                  },
+                ),
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   fontSize: 13,
@@ -1405,7 +1527,14 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
               if (_pointsToRedeem > 0) ...[
                 const SizedBox(height: 8),
                 Text(
-                  'سيتم استخدام $_pointsToRedeem نقطة بعد الموافقة (خصم ${_discountAmount.toStringAsFixed(0)} ر.س)',
+                  context.tr(
+                    'سيتم استخدام {points} نقطة بعد الموافقة (خصم {amount} {currency})',
+                    {
+                      'points': _pointsToRedeem,
+                      'amount': _discountAmount.toStringAsFixed(0),
+                      'currency': context.tr('ر.س'),
+                    },
+                  ),
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 12,
@@ -1431,9 +1560,9 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                     borderRadius: BorderRadius.circular(50),
                   ),
                 ),
-                child: const Text(
-                  'حسناً',
-                  style: TextStyle(color: Colors.white),
+                child: Text(
+                  context.tr('حسناً'),
+                  style: const TextStyle(color: Colors.white),
                 ),
               ),
             ),

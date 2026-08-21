@@ -11,6 +11,7 @@ import 'package:nabad/Cubits/states/user_state.dart';
 import 'package:nabad/Models/appointment_model.dart';
 import 'package:nabad/Models/patient_model.dart';
 import 'package:nabad/Models/patient_medical_record_model.dart';
+import 'package:nabad/core/localization/app_localizations.dart';
 import 'package:nabad/core/router/app_router.dart';
 import 'package:nabad/core/theme/nabad_colors.dart';
 
@@ -66,7 +67,7 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    state.message,
+                    context.tr(state.message),
                     style: const TextStyle(color: NabadColors.mutedText),
                   ),
                   const SizedBox(height: 16),
@@ -74,7 +75,7 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                     onPressed: () =>
                         context.read<UserCubit>().getPatientProfile(),
                     icon: const Icon(Icons.refresh_rounded),
-                    label: const Text('إعادة المحاولة'),
+                    label: Text(context.tr('إعادة المحاولة')),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: NabadColors.primary,
                       foregroundColor: Colors.white,
@@ -113,11 +114,11 @@ class _ProfileContent extends StatelessWidget {
 
   const _ProfileContent({required this.patient, required this.medicalState});
 
-  String _bloodTypeLabel(String? bt) =>
-      (bt == null || bt.isEmpty) ? 'غير محدد' : bt.toUpperCase();
+  String _bloodTypeLabel(BuildContext context, String? bt) =>
+      (bt == null || bt.isEmpty) ? context.tr('غير محدد') : bt.toUpperCase();
 
-  String _formatDate(String? d) {
-    if (d == null || d.isEmpty) return 'غير محدد';
+  String _formatDate(BuildContext context, String? d) {
+    if (d == null || d.isEmpty) return context.tr('غير محدد');
     try {
       final parts = d.split('-');
       if (parts.length != 3) return d;
@@ -137,20 +138,23 @@ class _ProfileContent extends StatelessWidget {
         'ديسمبر',
       ];
       final month = int.tryParse(parts[1]) ?? 0;
-      return '${parts[2]} ${months[month]} ${parts[0]}';
+      return '${parts[2]} ${context.tr(months[month])} ${parts[0]}';
     } catch (_) {
       return d;
     }
   }
 
-  String _appointmentReminder(AppointmentModel appointment) {
+  String _appointmentReminder(
+    BuildContext context,
+    AppointmentModel appointment,
+  ) {
     final doctor = appointment.doctorName.isEmpty
-        ? 'الطبيب'
-        : 'د. ${appointment.doctorName}';
+        ? context.tr('الطبيب')
+        : '${context.l10n.isArabic ? 'د.' : 'Dr.'} ${appointment.doctorName}';
     final specialty = appointment.specialty.isEmpty
         ? ''
-        : '${appointment.specialty}\n';
-    return '$doctor\n$specialty${_formatDate(appointment.date)} • ${appointment.time}';
+        : '${context.tr(appointment.specialty)}\n';
+    return '$doctor\n$specialty${_formatDate(context, appointment.date)} • ${appointment.time}';
   }
 
   @override
@@ -163,10 +167,10 @@ class _ProfileContent extends StatelessWidget {
     final heartRate = latestRecord?.heartRate?.toString() ?? '--';
     final allergies = latestRecord?.allergies.isNotEmpty == true
         ? latestRecord!.allergies
-        : 'لا توجد بيانات';
+        : context.tr('لا توجد بيانات');
     final diseases = latestRecord?.diseases.isNotEmpty == true
         ? latestRecord!.diseases
-        : 'لا توجد بيانات';
+        : context.tr('لا توجد بيانات');
     final fullName = '${user.firstName} ${user.lastName}';
     final initials = fullName
         .trim()
@@ -176,7 +180,9 @@ class _ProfileContent extends StatelessWidget {
         .join();
 
     return Directionality(
-      textDirection: TextDirection.rtl,
+      textDirection: context.l10n.isArabic
+          ? TextDirection.rtl
+          : TextDirection.ltr,
       child: ListView(
         padding: EdgeInsets.zero,
         children: [
@@ -233,9 +239,9 @@ class _ProfileContent extends StatelessWidget {
                     color: Colors.white.withAlpha(25),
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: const Text(
-                    'ملف المريض الطبي', // تم وضع نص بدلاً من النص الفارغ
-                    style: TextStyle(
+                  child: Text(
+                    context.tr('ملف المريض الطبي'),
+                    style: const TextStyle(
                       color: Colors.white,
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
@@ -254,7 +260,7 @@ class _ProfileContent extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // ─── Health Overview ──────────────
-                const _SectionTitle(title: 'نظرة صحية عامة'),
+                _SectionTitle(title: context.tr('نظرة صحية عامة')),
                 const SizedBox(height: 12),
 
                 Row(
@@ -279,12 +285,12 @@ class _ProfileContent extends StatelessWidget {
                                   size: 16,
                                 ),
                                 const SizedBox(width: 5),
-                                const Expanded(
+                                Expanded(
                                   child: Text(
-                                    'آخر نبض مسجل',
+                                    context.tr('آخر نبض مسجل'),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
+                                    style: const TextStyle(
                                       fontSize: 12,
                                       fontWeight: FontWeight.w900,
                                       color: NabadColors.deepTeal,
@@ -305,9 +311,9 @@ class _ProfileContent extends StatelessWidget {
                                       color: NabadColors.primary,
                                     ),
                                   ),
-                                  const TextSpan(
-                                    text: ' نبضة/دقيقة',
-                                    style: TextStyle(
+                                  TextSpan(
+                                    text: ' ${context.tr('نبضة/دقيقة')}',
+                                    style: const TextStyle(
                                       fontSize: 12,
                                       color: NabadColors.mutedText,
                                     ),
@@ -345,9 +351,9 @@ class _ProfileContent extends StatelessWidget {
                                       size: 14,
                                     ),
                                     const SizedBox(width: 4),
-                                    const Text(
-                                      'الحساسية',
-                                      style: TextStyle(
+                                    Text(
+                                      context.tr('الحساسية'),
+                                      style: const TextStyle(
                                         fontSize: 11,
                                         fontWeight: FontWeight.w900,
                                         color: NabadColors.deepTeal,
@@ -387,12 +393,12 @@ class _ProfileContent extends StatelessWidget {
                                       size: 14,
                                     ),
                                     const SizedBox(width: 4),
-                                    const Expanded(
+                                    Expanded(
                                       child: Text(
-                                        'الأمراض المزمنة',
+                                        context.tr('الأمراض المزمنة'),
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
-                                        style: TextStyle(
+                                        style: const TextStyle(
                                           fontSize: 11,
                                           fontWeight: FontWeight.w900,
                                           color: NabadColors.deepTeal,
@@ -439,12 +445,12 @@ class _ProfileContent extends StatelessWidget {
                               ? 'تعذر تحميل الموعد'
                               : appointment == null
                               ? 'لا يوجد موعد قادم'
-                              : _appointmentReminder(appointment);
+                              : _appointmentReminder(context, appointment);
 
                           return _ActionCard(
                             icon: Icons.calendar_today_outlined,
-                            label: 'موعدي القادم',
-                            sub: reminder,
+                            label: context.tr('موعدي القادم'),
+                            sub: context.tr(reminder),
                           );
                         },
                       ),
@@ -462,11 +468,15 @@ class _ProfileContent extends StatelessWidget {
                                   .length;
                               return _ActionCard(
                                 icon: Icons.medication_outlined,
-                                label: 'تذكير دواء',
+                                label: context.tr('تذكير دواء'),
                                 sub: active == 0
-                                    ? 'أضف تذكيراً'
-                                    : '$active تذكير نشط',
-                                btnText: active == 0 ? 'إضافة' : 'إدارة',
+                                    ? context.tr('أضف تذكيراً')
+                                    : context.tr('{count} تذكير نشط', {
+                                        'count': active,
+                                      }),
+                                btnText: context.tr(
+                                  active == 0 ? 'إضافة' : 'إدارة',
+                                ),
                                 btnColor: NabadColors.primary,
                                 onTap: () => Navigator.pushNamed(
                                   context,
@@ -482,15 +492,15 @@ class _ProfileContent extends StatelessWidget {
                 const SizedBox(height: 28),
 
                 // ─── المعلومات الطبية ─────────────────────────────────────
-                const _SectionTitle(title: 'المعلومات الطبية'),
+                _SectionTitle(title: context.tr('المعلومات الطبية')),
                 const SizedBox(height: 12),
                 _InfoCard(
                   children: [
                     _InfoRow(
                       icon: Icons.bloodtype_rounded,
                       iconColor: const Color(0xFFE05C5C),
-                      label: 'زمرة الدم',
-                      value: _bloodTypeLabel(latestBloodType),
+                      label: context.tr('زمرة الدم'),
+                      value: _bloodTypeLabel(context, latestBloodType),
                     ),
                   ],
                 ),
@@ -499,11 +509,13 @@ class _ProfileContent extends StatelessWidget {
 
                 Row(
                   children: [
-                    const Expanded(
-                      child: _SectionTitle(title: 'سجل الزيارات الطبية'),
+                    Expanded(
+                      child: _SectionTitle(
+                        title: context.tr('سجل الزيارات الطبية'),
+                      ),
                     ),
                     IconButton(
-                      tooltip: 'تحديث الملف الطبي',
+                      tooltip: context.tr('تحديث الملف الطبي'),
                       onPressed:
                           medicalState.status ==
                               PatientMedicalRecordStatus.loading
@@ -524,7 +536,7 @@ class _ProfileContent extends StatelessWidget {
                 _menuItem(
                   context,
                   Icons.person_outline_rounded,
-                  'المعلومات الشخصية',
+                  context.tr('المعلومات الشخصية'),
                   () => Navigator.of(context).push(
                     MaterialPageRoute<void>(
                       builder: (_) =>
@@ -535,13 +547,13 @@ class _ProfileContent extends StatelessWidget {
                 _menuItem(
                   context,
                   Icons.account_balance_wallet_outlined,
-                  'محفظتي',
+                  context.tr('محفظتي'),
                   () => Navigator.pushNamed(context, AppRoutes.wallet),
                 ),
                 _menuItem(
                   context,
                   Icons.settings_outlined,
-                  'الإعدادات',
+                  context.tr('الإعدادات'),
                   () => Navigator.pushNamed(context, AppRoutes.patientSettings),
                 ),
 
@@ -562,9 +574,9 @@ class _ProfileContent extends StatelessWidget {
                       ),
                     ),
                     icon: const Icon(Icons.logout_rounded),
-                    label: const Text(
-                      'تسجيل الخروج',
-                      style: TextStyle(
+                    label: Text(
+                      context.tr('تسجيل الخروج'),
+                      style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w900,
                       ),
@@ -615,7 +627,9 @@ class _ProfileContent extends StatelessWidget {
     showDialog(
       context: context,
       builder: (ctx) => Directionality(
-        textDirection: TextDirection.rtl,
+        textDirection: context.l10n.isArabic
+            ? TextDirection.rtl
+            : TextDirection.ltr,
         child: AlertDialog(
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(28),
@@ -638,20 +652,20 @@ class _ProfileContent extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 18),
-              const Text(
-                'هل تريد الخروج؟',
+              Text(
+                context.tr('هل تريد الخروج؟'),
                 textAlign: TextAlign.center,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w900,
                   color: NabadColors.darkText,
                 ),
               ),
               const SizedBox(height: 6),
-              const Text(
-                'ستحتاج لتسجيل الدخول مجدداً.',
+              Text(
+                context.tr('ستحتاج لتسجيل الدخول مجدداً.'),
                 textAlign: TextAlign.center,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 13,
                   color: NabadColors.mutedText,
                   fontWeight: FontWeight.w600,
@@ -672,9 +686,9 @@ class _ProfileContent extends StatelessWidget {
                           borderRadius: BorderRadius.circular(16),
                         ),
                       ),
-                      child: const Text(
-                        'إلغاء',
-                        style: TextStyle(
+                      child: Text(
+                        context.tr('إلغاء'),
+                        style: const TextStyle(
                           color: NabadColors.deepTeal,
                           fontWeight: FontWeight.w900,
                         ),
@@ -697,9 +711,9 @@ class _ProfileContent extends StatelessWidget {
                           borderRadius: BorderRadius.circular(16),
                         ),
                       ),
-                      child: const Text(
-                        'خروج',
-                        style: TextStyle(fontWeight: FontWeight.w900),
+                      child: Text(
+                        context.tr('خروج'),
+                        style: const TextStyle(fontWeight: FontWeight.w900),
                       ),
                     ),
                   ),
@@ -724,16 +738,18 @@ class _PersonalInformationPage extends StatelessWidget {
     final fullName = '${user.firstName} ${user.lastName}'.trim();
 
     return Directionality(
-      textDirection: TextDirection.rtl,
+      textDirection: context.l10n.isArabic
+          ? TextDirection.rtl
+          : TextDirection.ltr,
       child: Scaffold(
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         appBar: AppBar(
           backgroundColor: NabadColors.primary,
           foregroundColor: Colors.white,
           elevation: 0,
-          title: const Text(
-            'المعلومات الشخصية',
-            style: TextStyle(fontWeight: FontWeight.w900),
+          title: Text(
+            context.tr('المعلومات الشخصية'),
+            style: const TextStyle(fontWeight: FontWeight.w900),
           ),
         ),
         body: ListView(
@@ -767,7 +783,7 @@ class _PersonalInformationPage extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          fullName.isEmpty ? 'المريض' : fullName,
+                          fullName.isEmpty ? context.tr('المريض') : fullName,
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 18,
@@ -775,9 +791,9 @@ class _PersonalInformationPage extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 4),
-                        const Text(
-                          'بيانات الحساب الشخصية',
-                          style: TextStyle(
+                        Text(
+                          context.tr('بيانات الحساب الشخصية'),
+                          style: const TextStyle(
                             color: Color(0xDFFFFFFF),
                             fontSize: 12.5,
                             fontWeight: FontWeight.w600,
@@ -790,14 +806,14 @@ class _PersonalInformationPage extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 24),
-            const _SectionTitle(title: 'البيانات الشخصية'),
+            _SectionTitle(title: context.tr('البيانات الشخصية')),
             const SizedBox(height: 12),
             _InfoCard(
               children: [
                 _InfoRow(
                   icon: Icons.wc_rounded,
                   label: 'الجنس',
-                  value: _personalGenderLabel(patient.gender),
+                  value: context.tr(_personalGenderLabel(patient.gender)),
                 ),
                 const _Divider(),
                 _InfoRow(
@@ -809,12 +825,12 @@ class _PersonalInformationPage extends StatelessWidget {
                 _InfoRow(
                   icon: Icons.location_on_rounded,
                   label: 'العنوان',
-                  value: _personalValue(patient.address),
+                  value: context.tr(_personalValue(patient.address)),
                 ),
               ],
             ),
             const SizedBox(height: 24),
-            const _SectionTitle(title: 'معلومات التواصل'),
+            _SectionTitle(title: context.tr('معلومات التواصل')),
             const SizedBox(height: 12),
             _InfoCard(
               children: [
@@ -832,7 +848,7 @@ class _PersonalInformationPage extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 24),
-            const _SectionTitle(title: 'حالة الحساب'),
+            _SectionTitle(title: context.tr('حالة الحساب')),
             const SizedBox(height: 12),
             _InfoCard(
               children: [
@@ -845,8 +861,8 @@ class _PersonalInformationPage extends StatelessWidget {
                       : Colors.orange,
                   label: 'حالة البريد الإلكتروني',
                   value: user.emailVerifiedAt != null
-                      ? 'تم التحقق'
-                      : 'لم يتم التحقق بعد',
+                      ? context.tr('تم التحقق')
+                      : context.tr('لم يتم التحقق بعد'),
                 ),
               ],
             ),
@@ -889,9 +905,9 @@ class _MedicalRecordsSection extends StatelessWidget {
   Widget build(BuildContext context) {
     if (state.status == PatientMedicalRecordStatus.loading &&
         state.records.isEmpty) {
-      return const _MedicalMessage(
+      return _MedicalMessage(
         icon: Icons.sync_rounded,
-        message: 'جاري تحميل السجل الطبي...',
+        message: context.tr('جاري تحميل السجل الطبي...'),
         loading: true,
       );
     }
@@ -899,16 +915,16 @@ class _MedicalRecordsSection extends StatelessWidget {
         state.records.isEmpty) {
       return _MedicalMessage(
         icon: Icons.cloud_off_rounded,
-        message: state.errorMessage ?? 'تعذر تحميل السجل الطبي.',
-        actionLabel: 'إعادة المحاولة',
+        message: state.errorMessage ?? context.tr('تعذر تحميل السجل الطبي.'),
+        actionLabel: context.tr('إعادة المحاولة'),
         onAction: () =>
             context.read<PatientMedicalRecordCubit>().loadMedicalFile(),
       );
     }
     if (state.records.isEmpty) {
-      return const _MedicalMessage(
+      return _MedicalMessage(
         icon: Icons.folder_open_rounded,
-        message: 'لا توجد زيارات طبية مسجلة حتى الآن.',
+        message: context.tr('لا توجد زيارات طبية مسجلة حتى الآن.'),
       );
     }
 
@@ -923,7 +939,7 @@ class _MedicalRecordsSection extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
             child: Text(
-              state.errorMessage ?? 'تعذر تحديث الملف الطبي.',
+              state.errorMessage ?? context.tr('تعذر تحديث الملف الطبي.'),
               style: const TextStyle(color: Colors.redAccent, fontSize: 12),
             ),
           ),
@@ -986,45 +1002,45 @@ class _MedicalRecordCard extends StatelessWidget {
           const Divider(height: 12),
           _RecordDetail(
             icon: Icons.monitor_heart_outlined,
-            label: 'نبض القلب',
+            label: context.tr('نبض القلب'),
             value: record.heartRate == null
-                ? 'غير مسجل'
-                : '${record.heartRate} نبضة/دقيقة',
+                ? context.tr('غير مسجل')
+                : '${record.heartRate} ${context.tr('نبضة/دقيقة')}',
           ),
           _RecordDetail(
             icon: Icons.bloodtype_outlined,
-            label: 'زمرة الدم',
-            value: _valueOrFallback(record.bloodType),
+            label: context.tr('زمرة الدم'),
+            value: context.tr(_valueOrFallback(record.bloodType)),
           ),
           _RecordDetail(
             icon: Icons.warning_amber_rounded,
-            label: 'الحساسية',
-            value: _valueOrFallback(record.allergies),
+            label: context.tr('الحساسية'),
+            value: context.tr(_valueOrFallback(record.allergies)),
           ),
           _RecordDetail(
             icon: Icons.healing_outlined,
-            label: 'الأمراض والحالات السابقة',
-            value: _valueOrFallback(record.diseases),
+            label: context.tr('الأمراض والحالات السابقة'),
+            value: context.tr(_valueOrFallback(record.diseases)),
           ),
           _RecordDetail(
             icon: Icons.notes_rounded,
-            label: 'ملاحظات الطبيب',
-            value: _valueOrFallback(record.notes),
+            label: context.tr('ملاحظات الطبيب'),
+            value: context.tr(_valueOrFallback(record.notes)),
           ),
           if (record.referredToLaboratory)
             _RecordDetail(
               icon: Icons.biotech_outlined,
-              label: 'إحالة المختبر والتحاليل المطلوبة',
+              label: context.tr('إحالة المختبر والتحاليل المطلوبة'),
               value: record.laboratoryNotes.isEmpty
-                  ? 'تمت الإحالة إلى المختبر'
+                  ? context.tr('تمت الإحالة إلى المختبر')
                   : record.laboratoryNotes,
               highlighted: true,
             ),
           if (record.referredToPharmacist && record.prescription == null)
-            const _RecordDetail(
+            _RecordDetail(
               icon: Icons.local_pharmacy_outlined,
-              label: 'إحالة الصيدلية',
-              value: 'تمت الإحالة إلى الصيدلي',
+              label: context.tr('إحالة الصيدلية'),
+              value: context.tr('تمت الإحالة إلى الصيدلي'),
               highlighted: true,
             ),
           if (record.prescription != null)
@@ -1115,7 +1131,7 @@ class _PrescriptionDetails extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
               Icon(
                 Icons.medication_outlined,
@@ -1124,8 +1140,8 @@ class _PrescriptionDetails extends StatelessWidget {
               ),
               SizedBox(width: 8),
               Text(
-                'الوصفة الطبية',
-                style: TextStyle(
+                context.tr('الوصفة الطبية'),
+                style: const TextStyle(
                   color: NabadColors.deepTeal,
                   fontWeight: FontWeight.w900,
                 ),
@@ -1134,17 +1150,23 @@ class _PrescriptionDetails extends StatelessWidget {
           ),
           if (prescription.instructions.isNotEmpty)
             _PrescriptionText(
-              label: 'التعليمات',
+              label: context.tr('التعليمات'),
               value: prescription.instructions,
             ),
           if (prescription.notes.isNotEmpty)
-            _PrescriptionText(label: 'ملاحظات', value: prescription.notes),
+            _PrescriptionText(
+              label: context.tr('ملاحظات'),
+              value: prescription.notes,
+            ),
           if (prescription.items.isEmpty)
-            const Padding(
-              padding: EdgeInsets.only(top: 10),
+            Padding(
+              padding: const EdgeInsets.only(top: 10),
               child: Text(
-                'لا توجد أدوية مسجلة ضمن هذه الوصفة.',
-                style: TextStyle(color: NabadColors.mutedText, fontSize: 12),
+                context.tr('لا توجد أدوية مسجلة ضمن هذه الوصفة.'),
+                style: const TextStyle(
+                  color: NabadColors.mutedText,
+                  fontSize: 12,
+                ),
               ),
             )
           else
@@ -1170,11 +1192,14 @@ class _PrescriptionDetails extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       [
-                        if (item.dosage.isNotEmpty) 'الجرعة: ${item.dosage}',
+                        if (item.dosage.isNotEmpty)
+                          '${context.tr('الجرعة')}: ${item.dosage}',
                         if (item.frequency.isNotEmpty)
-                          'التكرار: ${item.frequency}',
-                        if (item.duration.isNotEmpty) 'المدة: ${item.duration}',
-                        if (item.notes.isNotEmpty) 'ملاحظات: ${item.notes}',
+                          '${context.tr('التكرار')}: ${item.frequency}',
+                        if (item.duration.isNotEmpty)
+                          '${context.tr('المدة')}: ${item.duration}',
+                        if (item.notes.isNotEmpty)
+                          '${context.tr('ملاحظات')}: ${item.notes}',
                       ].join(' • '),
                       style: const TextStyle(
                         color: NabadColors.mutedText,
@@ -1249,7 +1274,7 @@ class _MedicalMessage extends StatelessWidget {
               : Icon(icon, color: NabadColors.primary, size: 32),
           const SizedBox(height: 10),
           Text(
-            message,
+            context.tr(message),
             textAlign: TextAlign.center,
             style: const TextStyle(
               color: NabadColors.mutedText,
@@ -1259,7 +1284,10 @@ class _MedicalMessage extends StatelessWidget {
           ),
           if (actionLabel != null && onAction != null) ...[
             const SizedBox(height: 10),
-            TextButton(onPressed: onAction, child: Text(actionLabel!)),
+            TextButton(
+              onPressed: onAction,
+              child: Text(context.tr(actionLabel!)),
+            ),
           ],
         ],
       ),
@@ -1402,7 +1430,7 @@ class _SectionTitle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Text(
-      title,
+      context.tr(title),
       style: TextStyle(
         color: Theme.of(context).colorScheme.onSurface,
         fontSize: 17,
@@ -1462,7 +1490,7 @@ class _InfoRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  label,
+                  context.tr(label),
                   style: const TextStyle(
                     color: NabadColors.mutedText,
                     fontSize: 12,
@@ -1471,7 +1499,7 @@ class _InfoRow extends StatelessWidget {
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  value,
+                  context.tr(value),
                   style: const TextStyle(
                     color: NabadColors.darkText,
                     fontSize: 15,

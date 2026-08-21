@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nabad/Cubits/cubits/doctor_dashboard_cubit.dart';
+import 'package:nabad/Cubits/cubits/language_cubit.dart';
+import 'package:nabad/Cubits/cubits/theme_cubit.dart';
 import 'package:nabad/Cubits/cubits/user_cubit.dart';
 import 'package:nabad/Repositories/user_repository.dart';
 import 'package:nabad/core/Api/api_consumer.dart';
 import 'package:nabad/core/Api/end_points.dart';
 import 'package:nabad/core/Cache/cache_helper.dart';
+import 'package:nabad/core/localization/app_localizations.dart';
 import 'package:nabad/screens/HomePage_doctor/homepage_d.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -88,6 +92,69 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets('doctor can open settings and switch the whole app language', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({
+      ApiKey.id: 12,
+      'app_language_code': 'en',
+    });
+    await CacheHelper.init();
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final api = _FakeApi();
+    final languageCubit = LanguageCubit();
+    final themeCubit = ThemeCubit();
+    addTearDown(languageCubit.close);
+    addTearDown(themeCubit.close);
+
+    await tester.pumpWidget(
+      MultiBlocProvider(
+        providers: [
+          BlocProvider(create: (_) => DoctorDashboardCubit(api: api)),
+          BlocProvider(
+            create: (_) => UserCubit(userRepository: UserRepository(api: api)),
+          ),
+          BlocProvider.value(value: languageCubit),
+          BlocProvider.value(value: themeCubit),
+        ],
+        child: BlocBuilder<LanguageCubit, Locale>(
+          builder: (context, locale) => MaterialApp(
+            locale: locale,
+            supportedLocales: AppLocalizations.supportedLocales,
+            localizationsDelegates: const [
+              AppLocalizations.delegate,
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            home: const DoctorHomePage(),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Quick actions'), findsOneWidget);
+    await tester.tap(find.text('Profile').last);
+    await tester.pumpAndSettle();
+    expect(find.text('Settings'), findsOneWidget);
+
+    await tester.ensureVisible(find.text('Settings'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Settings'));
+    await tester.pumpAndSettle();
+    expect(find.text('App language'), findsOneWidget);
+    expect(find.text('English'), findsOneWidget);
+
+    await tester.tap(find.text('Switch to Arabic'));
+    await tester.pumpAndSettle();
+    expect(languageCubit.state.languageCode, 'ar');
+    expect(find.text('الإعدادات'), findsOneWidget);
+    expect(find.text('لغة التطبيق'), findsOneWidget);
+  });
 }
 
 class _FakeApi extends ApiConsumer {

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:nabad/core/theme/nabad_colors.dart';
+import 'package:nabad/core/localization/app_localizations.dart';
 import 'package:nabad/widgets/account_type/account_role.dart';
 
 class BenefitStrip extends StatelessWidget {
@@ -10,15 +11,30 @@ class BenefitStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final benefits = role == AccountRole.patient
-        ? const [
-            _MiniBenefit(icon: Icons.calendar_month_rounded, label: 'مواعيد'),
-            _MiniBenefit(icon: Icons.folder_rounded, label: 'ملف طبي'),
-            _MiniBenefit(icon: Icons.science_rounded, label: 'تحاليل'),
+        ? [
+            _MiniBenefit(
+              icon: Icons.calendar_month_rounded,
+              label: context.tr('مواعيد'),
+            ),
+            _MiniBenefit(
+              icon: Icons.folder_rounded,
+              label: context.tr('ملف طبي'),
+            ),
+            _MiniBenefit(
+              icon: Icons.science_rounded,
+              label: context.tr('تحاليل'),
+            ),
           ]
-        : const [
-            _MiniBenefit(icon: Icons.event_available_rounded, label: 'جدولة'),
-            _MiniBenefit(icon: Icons.groups_rounded, label: 'مرضى'),
-            _MiniBenefit(icon: Icons.edit_note_rounded, label: 'وصفات'),
+        : [
+            _MiniBenefit(
+              icon: Icons.event_available_rounded,
+              label: context.tr('جدولة'),
+            ),
+            _MiniBenefit(icon: Icons.groups_rounded, label: context.tr('مرضى')),
+            _MiniBenefit(
+              icon: Icons.edit_note_rounded,
+              label: context.tr('وصفات'),
+            ),
           ];
 
     return AnimatedSwitcher(

@@ -4,6 +4,7 @@ import 'package:nabad/Cubits/cubits/appointment_cubit.dart';
 import '../../Cubits/states/appointment_state.dart';
 import '../../Models/appointment_model.dart';
 import '../../core/Error/exceptions.dart';
+import '../../core/localization/app_localizations.dart';
 import '../../core/theme/nabd_colors.dart';
 import '../../widgets/doctors/appointment_card.dart';
 
@@ -46,6 +47,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen>
             doctorId: appointment.doctor.id,
             from: now,
             to: now.add(const Duration(days: 30)),
+            ignoreAppointmentId: appointment.id,
           );
       if (!mounted) return;
       final availableKeys = dates
@@ -53,7 +55,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen>
           .map((item) => _dateKey(item.date))
           .toSet();
       if (availableKeys.isEmpty) {
-        _showMessage('لا توجد أيام متاحة لإعادة الجدولة حالياً.');
+        _showMessage(context.tr('لا توجد أيام متاحة لإعادة الجدولة حالياً.'));
         return;
       }
       final firstAvailable = dates.firstWhere((item) => item.isAvailable).date;
@@ -64,11 +66,15 @@ class _AppointmentsScreenState extends State<AppointmentsScreen>
         lastDate: now.add(const Duration(days: 30)),
         selectableDayPredicate: (date) =>
             availableKeys.contains(_dateKey(date)),
-        helpText: 'اختر تاريخ الموعد الجديد',
-        cancelText: 'إلغاء',
-        confirmText: 'التالي',
-        builder: (context, child) =>
-            Directionality(textDirection: TextDirection.rtl, child: child!),
+        helpText: context.tr('اختر تاريخ الموعد الجديد'),
+        cancelText: context.tr('إلغاء'),
+        confirmText: context.tr('التالي'),
+        builder: (context, child) => Directionality(
+          textDirection: context.l10n.isArabic
+              ? TextDirection.rtl
+              : TextDirection.ltr,
+          child: child!,
+        ),
       );
       if (pickedDate == null || !mounted) return;
 
@@ -77,19 +83,22 @@ class _AppointmentsScreenState extends State<AppointmentsScreen>
           .getDoctorAvailability(
             doctorId: appointment.doctor.id,
             date: pickedDate,
+            ignoreAppointmentId: appointment.id,
           );
       if (!mounted) return;
       final slots = availability.slots.where((slot) => slot.available).toList();
       if (slots.isEmpty) {
-        _showMessage('لم يعد هناك وقت متاح في هذا اليوم.');
+        _showMessage(context.tr('لم يعد هناك وقت متاح في هذا اليوم.'));
         return;
       }
       final pickedTime = await showDialog<String>(
         context: context,
         builder: (dialogContext) => Directionality(
-          textDirection: TextDirection.rtl,
+          textDirection: context.l10n.isArabic
+              ? TextDirection.rtl
+              : TextDirection.ltr,
           child: SimpleDialog(
-            title: const Text('اختر الوقت الجديد'),
+            title: Text(context.tr('اختر الوقت الجديد')),
             children: slots
                 .map(
                   (slot) => SimpleDialogOption(
@@ -115,13 +124,16 @@ class _AppointmentsScreenState extends State<AppointmentsScreen>
         time: pickedTime,
       );
       if (!mounted) return;
-      _showMessage('تم تحديث موعدك بنجاح.');
+      _showMessage(context.tr('تم تحديث موعدك بنجاح.'));
     } on ServerExceptions catch (e) {
       if (!mounted) return;
       _showMessage(e.errModel.errorMessage, error: true);
     } catch (_) {
       if (!mounted) return;
-      _showMessage('تعذر تعديل الموعد، حاول مرة أخرى.', error: true);
+      _showMessage(
+        context.tr('تعذر تعديل الموعد، حاول مرة أخرى.'),
+        error: true,
+      );
     }
   }
 
@@ -133,7 +145,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen>
   void _showMessage(String message, {bool error = false}) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message),
+        content: Text(context.tr(message)),
         backgroundColor: error ? Colors.red.shade700 : null,
         behavior: SnackBarBehavior.floating,
       ),
@@ -151,22 +163,30 @@ class _AppointmentsScreenState extends State<AppointmentsScreen>
       initialDate: now.add(const Duration(days: 1)),
       firstDate: now,
       lastDate: now.add(const Duration(days: 90)),
-      helpText: 'اختر تاريخ الموعد الجديد',
-      cancelText: 'إلغاء',
-      confirmText: 'التالي',
-      builder: (context, child) =>
-          Directionality(textDirection: TextDirection.rtl, child: child!),
+      helpText: context.tr('اختر تاريخ الموعد الجديد'),
+      cancelText: context.tr('إلغاء'),
+      confirmText: context.tr('التالي'),
+      builder: (context, child) => Directionality(
+        textDirection: context.l10n.isArabic
+            ? TextDirection.rtl
+            : TextDirection.ltr,
+        child: child!,
+      ),
     );
     if (pickedDate == null || !mounted) return;
 
     final pickedTime = await showTimePicker(
       context: context,
       initialTime: const TimeOfDay(hour: 10, minute: 0),
-      helpText: 'اختر وقت الموعد الجديد',
-      cancelText: 'إلغاء',
-      confirmText: 'تأكيد',
-      builder: (context, child) =>
-          Directionality(textDirection: TextDirection.rtl, child: child!),
+      helpText: context.tr('اختر وقت الموعد الجديد'),
+      cancelText: context.tr('إلغاء'),
+      confirmText: context.tr('تأكيد'),
+      builder: (context, child) => Directionality(
+        textDirection: context.l10n.isArabic
+            ? TextDirection.rtl
+            : TextDirection.ltr,
+        child: child!,
+      ),
     );
     if (pickedTime == null || !mounted) return;
 
@@ -180,9 +200,9 @@ class _AppointmentsScreenState extends State<AppointmentsScreen>
         time: formattedTime,
       );
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('تم تحديث موعدك بنجاح')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.tr('تم تحديث موعدك بنجاح'))),
+      );
     } on ServerExceptions catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -195,7 +215,9 @@ class _AppointmentsScreenState extends State<AppointmentsScreen>
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تعذر تعديل الموعد، حاول مرة أخرى')),
+        SnackBar(
+          content: Text(context.tr('تعذر تعديل الموعد، حاول مرة أخرى.')),
+        ),
       );
     }
   }
@@ -205,15 +227,17 @@ class _AppointmentsScreenState extends State<AppointmentsScreen>
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => Directionality(
-        textDirection: TextDirection.rtl,
+        textDirection: context.l10n.isArabic
+            ? TextDirection.rtl
+            : TextDirection.ltr,
         child: StatefulBuilder(
           builder: (dialogContext, setDialogState) => AlertDialog(
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20),
             ),
-            title: const Text(
-              'قيّم تجربتك',
-              style: TextStyle(
+            title: Text(
+              context.tr('قيّم تجربتك'),
+              style: const TextStyle(
                 fontWeight: FontWeight.w700,
                 color: NabadColors.darkText,
               ),
@@ -222,7 +246,9 @@ class _AppointmentsScreenState extends State<AppointmentsScreen>
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'كيف كانت تجربتك مع ${appointment.doctorName}؟',
+                  context.tr('كيف كانت تجربتك مع {name}؟', {
+                    'name': appointment.doctorName,
+                  }),
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     color: NabadColors.mutedText,
@@ -254,9 +280,9 @@ class _AppointmentsScreenState extends State<AppointmentsScreen>
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(dialogContext, false),
-                child: const Text(
-                  'إلغاء',
-                  style: TextStyle(color: NabadColors.mutedText),
+                child: Text(
+                  context.tr('إلغاء'),
+                  style: const TextStyle(color: NabadColors.mutedText),
                 ),
               ),
               ElevatedButton(
@@ -268,9 +294,9 @@ class _AppointmentsScreenState extends State<AppointmentsScreen>
                     borderRadius: BorderRadius.circular(50),
                   ),
                 ),
-                child: const Text(
-                  'إرسال التقييم',
-                  style: TextStyle(color: Colors.white),
+                child: Text(
+                  context.tr('إرسال التقييم'),
+                  style: const TextStyle(color: Colors.white),
                 ),
               ),
             ],
@@ -289,7 +315,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen>
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('شكراً لتقييمك!')));
+      ).showSnackBar(SnackBar(content: Text(context.tr('شكراً لتقييمك!'))));
     } on ServerExceptions catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -302,7 +328,9 @@ class _AppointmentsScreenState extends State<AppointmentsScreen>
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تعذر إرسال التقييم، حاول مرة أخرى')),
+        SnackBar(
+          content: Text(context.tr('تعذر إرسال التقييم، حاول مرة أخرى')),
+        ),
       );
     }
   }
@@ -310,21 +338,23 @@ class _AppointmentsScreenState extends State<AppointmentsScreen>
   @override
   Widget build(BuildContext context) {
     return Directionality(
-      textDirection: TextDirection.rtl,
+      textDirection: context.l10n.isArabic
+          ? TextDirection.rtl
+          : TextDirection.ltr,
       child: Scaffold(
         backgroundColor: NabadColors.background,
         appBar: AppBar(
-          title: const Text('مواعيدي'),
+          title: Text(context.tr('مواعيدي')),
           centerTitle: true,
           bottom: TabBar(
             controller: _tabController,
             labelColor: NabadColors.primary,
             unselectedLabelColor: NabadColors.mutedText,
             indicatorColor: NabadColors.primary,
-            tabs: const [
-              Tab(text: 'قيد الانتظار'),
-              Tab(text: 'المنتهية'),
-              Tab(text: 'الملغاة'),
+            tabs: [
+              Tab(text: context.tr('قيد الانتظار')),
+              Tab(text: context.tr('المنتهية')),
+              Tab(text: context.tr('الملغاة')),
             ],
           ),
         ),
@@ -361,7 +391,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen>
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    state.message,
+                    context.tr(state.message),
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                       color: NabadColors.mutedText,
@@ -373,7 +403,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen>
                     onPressed: () =>
                         context.read<AppointmentCubit>().getAppointments(),
                     icon: const Icon(Icons.refresh_rounded),
-                    label: const Text('إعادة المحاولة'),
+                    label: Text(context.tr('إعادة المحاولة')),
                     style: TextButton.styleFrom(
                       foregroundColor: NabadColors.primary,
                     ),
@@ -403,9 +433,9 @@ class _AppointmentsScreenState extends State<AppointmentsScreen>
                   color: NabadColors.primary.withOpacity(0.25),
                 ),
                 const SizedBox(height: 12),
-                const Text(
-                  'لا توجد مواعيد',
-                  style: TextStyle(
+                Text(
+                  context.tr('لا توجد مواعيد'),
+                  style: const TextStyle(
                     color: NabadColors.mutedText,
                     fontSize: 15,
                     fontWeight: FontWeight.w500,
