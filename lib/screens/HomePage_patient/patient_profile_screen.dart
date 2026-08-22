@@ -552,6 +552,12 @@ class _ProfileContent extends StatelessWidget {
                 ),
                 _menuItem(
                   context,
+                  Icons.support_agent_rounded,
+                  context.tr('الدعم الفني'),
+                  () => Navigator.pushNamed(context, AppRoutes.supportTickets),
+                ),
+                _menuItem(
+                  context,
                   Icons.settings_outlined,
                   context.tr('الإعدادات'),
                   () => Navigator.pushNamed(context, AppRoutes.patientSettings),

@@ -18,6 +18,7 @@ import 'package:nabad/Models/doctor_model.dart';
 import 'package:nabad/core/router/app_router.dart';
 import 'package:nabad/core/localization/app_localizations.dart';
 import 'package:nabad/core/theme/nabad_colors.dart';
+import 'package:nabad/core/notifications/push_notification_service.dart';
 import 'package:nabad/screens/HomePage_patient/patient_profile_screen.dart';
 import 'package:nabad/screens/HomePage_patient/doctor/department_doctors_screen.dart';
 import 'package:nabad/screens/HomePage_patient/doctor/doctor_profile_booking_screen.dart';
@@ -69,6 +70,9 @@ class _PatientHomePageState extends State<PatientHomePage>
     context.read<DoctorCubit>().getAllDoctors();
     context.read<PointsCubit>().getPointsSummary();
     context.read<PatientNotificationCubit>().loadUnreadCount();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      PushNotificationService.instance.processPendingNavigation();
+    });
     _pointsRefreshTimer = Timer.periodic(const Duration(seconds: 20), (_) {
       if (mounted && _selectedIndex == 0) {
         context.read<PointsCubit>().getPointsSummary();

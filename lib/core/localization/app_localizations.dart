@@ -59,6 +59,77 @@ class _AppLocalizationsDelegate
 }
 
 const Map<String, String> _englishTranslations = {
+  '{count} وقت متاح': '{count} available slots',
+  'لا توجد أيام متاحة للحجز خلال الفترة الحالية':
+      'No booking days are available in the current period',
+  'تم تحديث الأوقات، اختر وقتاً جديداً.':
+      'Availability was refreshed. Please choose a new time.',
+  'تم تأكيد موعدك مع {doctor}\n{date} الساعة {time} {period}':
+      'Your appointment with {doctor} is confirmed\n{date} at {time} {period}',
+  'سجل أرباح الطبيب': 'Doctor earnings ledger',
+  'حصتك المالية من المواعيد المكتملة': 'Your share from completed appointments',
+  'صافي أرباحك': 'Your earnings',
+  'حصتك من المواعيد المكتملة': 'Your share from completed appointments',
+  'المعاينات المكتملة': 'Completed visits',
+  'إجمالي الدخل': 'Gross revenue',
+  'عمولة المنصة': 'Platform share',
+  'سجل العمليات': 'Transactions ledger',
+  'الأرقام معتمدة من السيرفر للمواعيد المكتملة فقط':
+      'Server-verified figures from completed appointments only',
+  'الموعد رقم {id}': 'Appointment #{id}',
+  'الإجمالي': 'Gross',
+  'حصتك': 'Your share',
+  'لا توجد أرباح مسجلة بعد': 'No earnings recorded yet',
+  'تظهر الأرباح هنا بعد اكتمال المعاينات':
+      'Earnings appear here after visits are completed',
+  'تعذر تحميل سجل الأرباح': 'Could not load the earnings ledger',
+  'الدعم الفني': 'Technical support',
+  'محادثاتي وشكاواي': 'My conversations and complaints',
+  'محادثة دعم': 'Support conversation',
+  'محادثة دعم جديدة': 'New support conversation',
+  'إنشاء محادثة دعم': 'Create support conversation',
+  'شكوى': 'Complaint',
+  'صندوق الشكاوى': 'Complaints inbox',
+  'لا توجد محادثات دعم حتى الآن': 'No support conversations yet',
+  'ابدأ محادثة جديدة وسيظهر رد فريق الدعم هنا.':
+      'Start a new conversation and the support reply will appear here.',
+  'تعذر تحميل محادثات الدعم.': 'Could not load support conversations.',
+  'المحادثة غير موجودة.': 'The conversation was not found.',
+  'اكتب رسالتك...': 'Write your message...',
+  'إرسال': 'Send',
+  'تحديث': 'Refresh',
+  'مفتوحة': 'Open',
+  'قيد المعالجة': 'In progress',
+  'تم الحل': 'Resolved',
+  'مغلقة': 'Closed',
+  'أولوية منخفضة': 'Low priority',
+  'أولوية عادية': 'Normal priority',
+  'أولوية عالية': 'High priority',
+  'عاجلة': 'Urgent',
+  'منخفضة': 'Low',
+  'عادية': 'Normal',
+  'عالية': 'High',
+  'كيف يمكننا مساعدتك؟': 'How can we help?',
+  'اكتب تفاصيل واضحة ليتمكن فريق الدعم من مساعدتك بسرعة.':
+      'Add clear details so the support team can help you quickly.',
+  'عنوان المحادثة': 'Conversation subject',
+  'شرح المشكلة': 'Describe the problem',
+  'أولوية الشكوى': 'Complaint priority',
+  'يرجى كتابة عنوان المحادثة.': 'Please enter a conversation subject.',
+  'يرجى شرح المشكلة.': 'Please describe the problem.',
+  'جارٍ الإنشاء...': 'Creating...',
+  'تعذر الاتصال بالسيرفر. تحقق من الإنترنت وحاول مجدداً.':
+      'Could not reach the server. Check your connection and try again.',
+  'انقطع الاتصال. لم تُرسل الرسالة والنص ما زال محفوظاً.':
+      'Connection lost. The message was not sent and your text is preserved.',
+  'تعذر الاتصال. بيانات الشكوى ما زالت محفوظة.':
+      'Connection failed. Your complaint details are preserved.',
+  'انتهت الجلسة. يرجى تسجيل الدخول مجدداً.':
+      'Your session expired. Please sign in again.',
+  'ليس لديك صلاحية لتنفيذ هذا الإجراء.':
+      'You do not have permission to perform this action.',
+  'المحادثة أو البيانات المطلوبة غير موجودة.':
+      'The requested conversation or data was not found.',
   'التالي': 'Next',
   'ابدأ الآن': 'Get started',
   'استشر أفضل الأطباء': 'Consult the best doctors',

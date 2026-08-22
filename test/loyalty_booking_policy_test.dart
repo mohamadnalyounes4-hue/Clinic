@@ -42,6 +42,25 @@ void main() {
       },
     );
 
+    test('reads structured loyalty settings returned by the API', () {
+      final summary = PointsSummaryModel.fromJson({
+        'data': {
+          'points_balance': 80,
+          'loyalty_active': true,
+          'settings': {
+            'points_per_redemption_unit': 40,
+            'discount_percentage_per_unit': '30.00',
+            'max_discount_percentage': 30,
+          },
+        },
+      });
+
+      expect(summary.pointsPerUnit, 40);
+      expect(summary.discountPerUnit, 30);
+      expect(summary.maxDiscountPercent, 30);
+      expect(summary.discountPercentFor(40), 30);
+    });
+
     test('rounds the discounted amount used for wallet settlement', () {
       expect(LoyaltyPolicy.discountAmount(999), 299.70);
       expect(LoyaltyPolicy.finalPrice(999), 699.30);
@@ -156,6 +175,7 @@ void main() {
     expect(find.text('حجز عادي بالسعر الكامل'), findsOneWidget);
     expect(find.text('استخدام 40 نقطة'), findsOneWidget);
     expect(find.text('خصم 30% على هذا الحجز'), findsOneWidget);
+    expect(find.text('1 وقت متاح'), findsOneWidget);
 
     await tester.ensureVisible(find.text('استخدام 40 نقطة'));
     await tester.tap(find.text('استخدام 40 نقطة'));

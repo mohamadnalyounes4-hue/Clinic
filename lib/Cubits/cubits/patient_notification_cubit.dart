@@ -74,7 +74,7 @@ class PatientNotificationCubit extends Cubit<PatientNotificationState> {
         ),
       );
     } on ServerExceptions catch (error) {
-      _emitFailure(error.errModel.errorMessage);
+      _emitFailure(error.errModel.errorMessage, error.statusCode);
     } catch (_) {
       _emitFailure('تعذر تحميل الإشعارات. تحقق من الاتصال وحاول مجدداً.');
     }
@@ -84,20 +84,32 @@ class PatientNotificationCubit extends Cubit<PatientNotificationState> {
     final index = state.notifications.indexWhere((item) => item.id == id);
     if (index < 0 || state.notifications[index].isRead) return;
 
-    final updated = [...state.notifications];
-    updated[index] = updated[index].copyWith(isRead: true);
-    emit(
-      state.copyWith(
-        notifications: updated,
-        unreadCount: state.unreadCount > 0 ? state.unreadCount - 1 : 0,
-      ),
-    );
-
     try {
-      await api.post(EndPoints.readNotification(id));
+      final responses = await Future.wait<dynamic>([
+        api.post(EndPoints.readNotification(id)),
+        api.get(EndPoints.unreadNotificationsCount),
+      ]);
+      final response = (responses[0] as Map).cast<String, dynamic>();
+      final data = (response['data'] as Map?)?.cast<String, dynamic>();
+      final updated = [...state.notifications];
+      if (data != null) {
+        updated[index] = PatientNotificationModel.fromJson(data);
+      }
+      final countMap = (responses[1] as Map).cast<String, dynamic>();
+      emit(
+        state.copyWith(
+          notifications: updated,
+          unreadCount: _toInt(countMap['count']),
+          clearError: true,
+        ),
+      );
     } on ServerExceptions catch (error) {
-      emit(state.copyWith(errorMessage: error.errModel.errorMessage));
-      await loadNotifications(refresh: true);
+      emit(
+        state.copyWith(
+          errorMessage: error.errModel.errorMessage,
+          errorStatusCode: error.statusCode,
+        ),
+      );
     }
   }
 
@@ -105,33 +117,37 @@ class PatientNotificationCubit extends Cubit<PatientNotificationState> {
     if (state.unreadCount == 0) return;
     try {
       await api.post(EndPoints.readAllNotifications);
+      await loadNotifications(refresh: true);
+    } on ServerExceptions catch (error) {
       emit(
         state.copyWith(
-          unreadCount: 0,
-          notifications: state.notifications
-              .map((item) => item.copyWith(isRead: true))
-              .toList(),
-          clearError: true,
+          errorMessage: error.errModel.errorMessage,
+          errorStatusCode: error.statusCode,
         ),
       );
-    } on ServerExceptions catch (error) {
-      emit(state.copyWith(errorMessage: error.errModel.errorMessage));
     }
   }
 
   void clearError() => emit(state.copyWith(clearError: true));
 
-  void _emitFailure(String message) {
+  void _emitFailure(String message, [int? statusCode]) {
     if (state.notifications.isEmpty) {
       emit(
         state.copyWith(
           status: PatientNotificationStatus.failure,
           loadingMore: false,
           errorMessage: message,
+          errorStatusCode: statusCode,
         ),
       );
     } else {
-      emit(state.copyWith(loadingMore: false, errorMessage: message));
+      emit(
+        state.copyWith(
+          loadingMore: false,
+          errorMessage: message,
+          errorStatusCode: statusCode,
+        ),
+      );
     }
   }
 

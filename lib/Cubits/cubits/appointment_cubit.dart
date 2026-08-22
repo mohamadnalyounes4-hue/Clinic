@@ -36,6 +36,16 @@ class AppointmentCubit extends Cubit<AppointmentState> {
     required DateTime to,
     int? ignoreAppointmentId,
   }) async {
+    final rangeDays = DateTime(
+      to.year,
+      to.month,
+      to.day,
+    ).difference(DateTime(from.year, from.month, from.day)).inDays;
+    if (rangeDays < 0 || rangeDays > 61) {
+      throw ArgumentError(
+        'Availability range cannot exceed 62 inclusive days.',
+      );
+    }
     final response = await api.get(
       EndPoints.doctorAvailableDates(doctorId),
       queryParameters: {

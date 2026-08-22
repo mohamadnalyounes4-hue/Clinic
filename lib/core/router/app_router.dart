@@ -18,6 +18,9 @@ import 'package:nabad/screens/HomePage_patient/points_history_screen.dart';
 import 'package:nabad/screens/HomePage_patient/patient_notifications_screen.dart';
 import 'package:nabad/screens/HomePage_patient/medicine_reminders_screen.dart';
 import 'package:nabad/screens/HomePage_patient/patient_settings_screen.dart';
+import 'package:nabad/screens/HomePage_patient/support_chat_page.dart';
+import 'package:nabad/screens/HomePage_patient/support_tickets_page.dart';
+import 'package:nabad/screens/HomePage_patient/create_support_chat_page.dart';
 
 class AppRoutes {
   static const String welcome = '/';
@@ -40,6 +43,9 @@ class AppRoutes {
   static const String patientNotifications = '/patient_notifications';
   static const String medicineReminders = '/medicine_reminders';
   static const String patientSettings = '/patient_settings';
+  static const String supportTickets = '/patient_support';
+  static const String supportChat = '/patient_support/chat';
+  static const String createSupportChat = '/patient_support/create';
 }
 
 class AppRouter {
@@ -85,6 +91,18 @@ class AppRouter {
         );
       case AppRoutes.patientSettings:
         return MaterialPageRoute(builder: (_) => const PatientSettingsScreen());
+      case AppRoutes.supportTickets:
+        return MaterialPageRoute(builder: (_) => const SupportTicketsPage());
+      case AppRoutes.createSupportChat:
+        return MaterialPageRoute(builder: (_) => const CreateSupportChatPage());
+      case AppRoutes.supportChat:
+        final ticketId = settings.arguments;
+        if (ticketId is int) {
+          return MaterialPageRoute(
+            builder: (_) => SupportChatPage(ticketId: ticketId),
+          );
+        }
+        return MaterialPageRoute(builder: (_) => const SupportTicketsPage());
       case AppRoutes.bookingDetail:
         final doctor = settings.arguments;
         if (doctor is DoctorModel) {

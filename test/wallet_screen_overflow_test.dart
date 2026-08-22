@@ -25,6 +25,18 @@ void main() {
     expect(transaction('appointment_refund', 'credit').isCredit, isTrue);
   });
 
+  test('wallet parses the API transaction date format', () {
+    final transaction = WalletTransactionModel.fromJson({
+      'id': 1,
+      'type': 'top_up',
+      'direction': 'credit',
+      'amount': '150000.00',
+      'created_at': '22-08-2026 04:15',
+    });
+
+    expect(transaction.createdAt, DateTime(2026, 8, 22, 4, 15));
+  });
+
   for (final scenario in [
     (locale: const Locale('ar'), allowTopUp: true, title: 'محفظتي'),
     (locale: const Locale('en'), allowTopUp: false, title: 'محفظة الدكتور'),

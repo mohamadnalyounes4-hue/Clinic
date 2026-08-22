@@ -3,7 +3,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:nabad/Cubits/cubits/patient_notification_cubit.dart';
 import 'package:nabad/Cubits/states/patient_notification_state.dart';
 import 'package:nabad/Models/patient_notification_model.dart';
+import 'package:nabad/Models/support_notification_model.dart';
 import 'package:nabad/core/localization/app_localizations.dart';
+import 'package:nabad/core/router/app_router.dart';
 import 'package:nabad/core/theme/nabad_colors.dart';
 
 class PatientNotificationsScreen extends StatefulWidget {
@@ -81,6 +83,14 @@ class _PatientNotificationsScreenState
               previous.errorMessage != current.errorMessage &&
               current.errorMessage != null,
           listener: (context, state) {
+            if (state.errorStatusCode == 401) {
+              Navigator.pushNamedAndRemoveUntil(
+                context,
+                AppRoutes.welcome,
+                (_) => false,
+              );
+              return;
+            }
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text(context.tr(state.errorMessage!))),
             );
@@ -135,9 +145,25 @@ class _PatientNotificationsScreenState
                   final notification = state.notifications[index];
                   return _NotificationCard(
                     notification: notification,
-                    onTap: () => context
-                        .read<PatientNotificationCubit>()
-                        .markAsRead(notification.id),
+                    onTap: () async {
+                      await context.read<PatientNotificationCubit>().markAsRead(
+                        notification.id,
+                      );
+                      if (!context.mounted) return;
+                      final support =
+                          SupportNotificationModel.fromPatientNotification(
+                            notification,
+                          );
+                      if (support.opensSupportChat) {
+                        Navigator.pushNamed(
+                          context,
+                          AppRoutes.supportChat,
+                          arguments: support.ticketId,
+                        );
+                      } else if (notification.type.startsWith('appointment_')) {
+                        Navigator.pushNamed(context, AppRoutes.appointments);
+                      }
+                    },
                   );
                 },
               ),
@@ -258,6 +284,7 @@ class _NotificationCard extends StatelessWidget {
     if (type.contains('wallet') || type.contains('payment')) {
       return Icons.account_balance_wallet_outlined;
     }
+    if (type.startsWith('support_')) return Icons.support_agent_rounded;
     return Icons.notifications_none_rounded;
   }
 
@@ -269,6 +296,7 @@ class _NotificationCard extends StatelessWidget {
     if (type.contains('wallet') || type.contains('payment')) {
       return const Color(0xFF17875D);
     }
+    if (type.startsWith('support_')) return const Color(0xFF7B5BA7);
     return NabadColors.primary;
   }
 
@@ -278,12 +306,15 @@ class _NotificationCard extends StatelessWidget {
     final difference = DateTime.now().difference(local);
     if (!difference.isNegative) {
       if (difference.inMinutes < 1) return context.tr('الآن');
-      if (difference.inMinutes < 60)
+      if (difference.inMinutes < 60) {
         return context.tr('منذ {count} دقيقة', {'count': difference.inMinutes});
-      if (difference.inHours < 24)
+      }
+      if (difference.inHours < 24) {
         return context.tr('منذ {count} ساعة', {'count': difference.inHours});
-      if (difference.inDays < 7)
+      }
+      if (difference.inDays < 7) {
         return context.tr('منذ {count} يوم', {'count': difference.inDays});
+      }
     }
     final day = local.day.toString().padLeft(2, '0');
     final month = local.month.toString().padLeft(2, '0');

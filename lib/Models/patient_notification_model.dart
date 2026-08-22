@@ -18,12 +18,15 @@ class PatientNotificationModel {
   });
 
   factory PatientNotificationModel.fromJson(Map<String, dynamic> json) {
+    final rawData = json['data'];
     return PatientNotificationModel(
       id: _toInt(json['id']),
       type: json['type']?.toString() ?? '',
       title: json['title']?.toString() ?? 'إشعار جديد',
       body: json['body']?.toString() ?? '',
-      data: (json['data'] as Map?)?.cast<String, dynamic>() ?? const {},
+      data: rawData is Map
+          ? rawData.map((key, value) => MapEntry(key.toString(), value))
+          : const {},
       isRead: json['is_read'] == true || json['read_at'] != null,
       createdAt: DateTime.tryParse(json['created_at']?.toString() ?? ''),
     );

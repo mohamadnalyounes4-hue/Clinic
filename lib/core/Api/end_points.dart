@@ -1,6 +1,5 @@
 class EndPoints {
-  static String baseUrl = "http://10.69.138.185:8000/api/"; // عالموبايل و بيتغير
-  // static String baseUrl = "http://10.0.2.2:8000/api/";          //عالمحاكي
+  static String baseUrl = "http://10.0.2.2:8000/api/"; // Android emulator
 
   // Auth
   static String login = "login";
@@ -32,6 +31,7 @@ class EndPoints {
       "doctors/$id/available-dates";
   static String doctorAvailability(Object id) => "doctors/$id/availability";
   static String myDoctorAppointments = "doctor/appointments/mine";
+  static String doctorEarnings = "doctor/earnings";
   static String doctorAppointments = "doctor/appointments";
   static String allAppointments = "all_appointments";
 
@@ -54,6 +54,12 @@ class EndPoints {
   static String unreadNotificationsCount = "notifications/unread-count";
   static String readNotification(Object id) => "notifications/$id/read";
   static String readAllNotifications = "notifications/read-all";
+  static String notificationFcmToken = "notifications/fcm-token";
+
+  // Patient support
+  static String patientSupportTickets = "patient/support/tickets";
+  static String patientSupportTicketMessages(Object id) =>
+      "patient/support/tickets/$id/messages";
 
   // Appointments
   static String appointments = "appointments"; // GET (list) / POST (book)

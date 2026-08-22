@@ -125,5 +125,21 @@ double _toDouble(dynamic value) {
 
 DateTime? _parseDate(dynamic value) {
   if (value == null) return null;
-  return DateTime.tryParse(value.toString());
+  final raw = value.toString().trim();
+  final isoDate = DateTime.tryParse(raw);
+  if (isoDate != null) return isoDate;
+
+  // Wallet resources currently return "dd-MM-yyyy HH:mm". Keep accepting
+  // that server format while remaining compatible with future ISO dates.
+  final match = RegExp(
+    r'^(\d{2})-(\d{2})-(\d{4})(?:\s+(\d{2}):(\d{2}))?$',
+  ).firstMatch(raw);
+  if (match == null) return null;
+  return DateTime(
+    int.parse(match.group(3)!),
+    int.parse(match.group(2)!),
+    int.parse(match.group(1)!),
+    int.tryParse(match.group(4) ?? '') ?? 0,
+    int.tryParse(match.group(5) ?? '') ?? 0,
+  );
 }

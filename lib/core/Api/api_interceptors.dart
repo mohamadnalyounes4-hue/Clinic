@@ -10,6 +10,9 @@ class ApiInterceptors extends Interceptor {
       options.headers['Authorization'] = 'Bearer $token';
     }
     options.headers['Accept'] = 'application/json';
+    if (options.data is! FormData) {
+      options.headers['Content-Type'] = 'application/json';
+    }
 
     super.onRequest(options, handler);
   }

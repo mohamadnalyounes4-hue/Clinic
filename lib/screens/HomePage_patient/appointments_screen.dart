@@ -6,6 +6,7 @@ import '../../Models/appointment_model.dart';
 import '../../core/Error/exceptions.dart';
 import '../../core/localization/app_localizations.dart';
 import '../../core/theme/nabd_colors.dart';
+import '../../core/time/clinic_clock.dart';
 import '../../widgets/doctors/appointment_card.dart';
 
 class AppointmentsScreen extends StatefulWidget {
@@ -38,8 +39,11 @@ class _AppointmentsScreenState extends State<AppointmentsScreen>
   // route إلغاء مباشر" — الإلغاء بس من العيادة (secretary). لو حبينا نوجّه
   // المريض، بنعرضله رسالة "تواصل مع العيادة" بدل زر إلغاء فعلي.
 
-  Future<void> _rescheduleAppointment(AppointmentModel appointment) async {
-    final now = DateTime.now();
+  Future<void> _rescheduleAppointment(
+    AppointmentModel appointment, {
+    bool refreshedAfterConflict = false,
+  }) async {
+    final now = ClinicClock.today();
     try {
       final dates = await context
           .read<AppointmentCubit>()
@@ -124,10 +128,23 @@ class _AppointmentsScreenState extends State<AppointmentsScreen>
         time: pickedTime,
       );
       if (!mounted) return;
+      await context.read<AppointmentCubit>().getDoctorAvailability(
+        doctorId: appointment.doctor.id,
+        date: pickedDate,
+        ignoreAppointmentId: appointment.id,
+      );
+      if (!mounted) return;
       _showMessage(context.tr('تم تحديث موعدك بنجاح.'));
     } on ServerExceptions catch (e) {
       if (!mounted) return;
       _showMessage(e.errModel.errorMessage, error: true);
+      if (e.statusCode == 422 && !refreshedAfterConflict) {
+        _showMessage(
+          context.tr('تم تحديث الأوقات، اختر وقتاً جديداً.'),
+          error: true,
+        );
+        await _rescheduleAppointment(appointment, refreshedAfterConflict: true);
+      }
     } catch (_) {
       if (!mounted) return;
       _showMessage(
@@ -157,7 +174,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen>
   Future<void> _legacyRescheduleAppointment(
     AppointmentModel appointment,
   ) async {
-    final now = DateTime.now();
+    final now = ClinicClock.today();
     final pickedDate = await showDatePicker(
       context: context,
       initialDate: now.add(const Duration(days: 1)),

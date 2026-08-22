@@ -53,22 +53,31 @@ class PointsSummaryModel {
       pointsBalance: _toInt(data['points_balance']),
       loyaltyActive: data['loyalty_active'] == true,
       redemptionRateLabel: rateLabel,
-      pointsPerUnit: LoyaltyPolicy.pointsRequiredForDiscount,
-      discountPerUnit: LoyaltyPolicy.discountPercentage,
-      maxDiscountPercent: LoyaltyPolicy.discountPercentage,
+      pointsPerUnit: _positiveIntOr(
+        settings['points_per_redemption_unit'],
+        LoyaltyPolicy.pointsRequiredForDiscount,
+      ),
+      discountPerUnit: _positiveDoubleOr(
+        settings['discount_percentage_per_unit'],
+        LoyaltyPolicy.discountPercentage,
+      ),
+      maxDiscountPercent: _positiveDoubleOr(
+        settings['max_discount_percentage'],
+        LoyaltyPolicy.discountPercentage,
+      ),
     );
   }
 
   /// نسبة الخصم (%) مقابل عدد نقاط معيّن، بحد أقصى [maxDiscountPercent].
   double discountPercentFor(int pointsToRedeem) {
-    return pointsToRedeem == LoyaltyPolicy.pointsRequiredForDiscount
-        ? LoyaltyPolicy.discountPercentage
+    return pointsToRedeem == pointsPerUnit
+        ? math.min(discountPerUnit, maxDiscountPercent)
         : 0;
   }
 
   /// أقصى عدد نقاط له فايدة فعلية (بعده الخصم بيوصل للحد الأقصى وما بيزيد).
   int get pointsForMaxDiscount {
-    return LoyaltyPolicy.pointsRequiredForDiscount;
+    return pointsPerUnit;
   }
 }
 
@@ -76,6 +85,16 @@ int _toInt(dynamic value) {
   if (value is int) return value;
   if (value is num) return value.toInt();
   return int.tryParse(value?.toString() ?? '') ?? 0;
+}
+
+int _positiveIntOr(dynamic value, int fallback) {
+  final parsed = _toInt(value);
+  return parsed > 0 ? parsed : fallback;
+}
+
+double _positiveDoubleOr(dynamic value, double fallback) {
+  final parsed = _toDouble(value);
+  return parsed > 0 ? parsed : fallback;
 }
 
 class PointTransactionModel {

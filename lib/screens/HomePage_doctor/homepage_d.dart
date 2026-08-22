@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:nabad/Cubits/cubits/doctor_dashboard_cubit.dart';
+import 'package:nabad/Cubits/cubits/doctor_earnings_cubit.dart';
 import 'package:nabad/Cubits/cubits/appointment_cubit.dart';
 import 'package:nabad/Cubits/cubits/user_cubit.dart';
 import 'package:nabad/Cubits/states/doctor_dashboard_state.dart';
@@ -15,6 +16,7 @@ import 'package:nabad/core/localization/app_localizations.dart';
 import 'package:nabad/core/router/app_router.dart';
 import 'package:nabad/screens/HomePage_patient/patient_settings_screen.dart';
 import 'package:nabad/screens/HomePage_patient/wallet_screen.dart';
+import 'package:nabad/screens/HomePage_doctor/doctor_earnings_page.dart';
 import 'package:nabad/widgets/localized_text.dart';
 
 const _ink = Color(0xFF172A35);
@@ -2093,6 +2095,73 @@ class _AccountPage extends StatelessWidget {
                               _DoctorSchedulePage(doctorId: profile.doctorId),
                         ),
                       ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Container(
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF5B4FD6), Color(0xFF2878E6)],
+                begin: AlignmentDirectional.topStart,
+                end: AlignmentDirectional.bottomEnd,
+              ),
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x305B4FD6),
+                  blurRadius: 18,
+                  offset: Offset(0, 9),
+                ),
+              ],
+            ),
+            child: Material(
+              type: MaterialType.transparency,
+              child: ListTile(
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 10,
+                ),
+                leading: Container(
+                  width: 46,
+                  height: 46,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withAlpha(35),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: const Icon(
+                    Icons.auto_graph_rounded,
+                    color: Colors.white,
+                  ),
+                ),
+                title: const LocalizedText(
+                  'سجل أرباح الطبيب',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                subtitle: Text(
+                  context.tr('حصتك المالية من المواعيد المكتملة'),
+                  style: TextStyle(color: Colors.white.withAlpha(205)),
+                ),
+                trailing: Icon(
+                  context.l10n.isArabic
+                      ? Icons.chevron_left_rounded
+                      : Icons.chevron_right_rounded,
+                  color: Colors.white,
+                ),
+                onTap: () {
+                  final api = context.read<DoctorDashboardCubit>().api;
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => BlocProvider(
+                        create: (_) => DoctorEarningsCubit(api: api),
+                        child: const DoctorEarningsPage(),
+                      ),
+                    ),
+                  );
+                },
               ),
             ),
           ),

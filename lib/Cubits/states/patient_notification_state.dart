@@ -10,6 +10,7 @@ class PatientNotificationState {
   final int lastPage;
   final bool loadingMore;
   final String? errorMessage;
+  final int? errorStatusCode;
 
   const PatientNotificationState({
     this.status = PatientNotificationStatus.initial,
@@ -19,6 +20,7 @@ class PatientNotificationState {
     this.lastPage = 1,
     this.loadingMore = false,
     this.errorMessage,
+    this.errorStatusCode,
   });
 
   bool get hasMore => currentPage < lastPage;
@@ -31,6 +33,7 @@ class PatientNotificationState {
     int? lastPage,
     bool? loadingMore,
     String? errorMessage,
+    int? errorStatusCode,
     bool clearError = false,
   }) {
     return PatientNotificationState(
@@ -41,6 +44,9 @@ class PatientNotificationState {
       lastPage: lastPage ?? this.lastPage,
       loadingMore: loadingMore ?? this.loadingMore,
       errorMessage: clearError ? null : errorMessage ?? this.errorMessage,
+      errorStatusCode: clearError
+          ? null
+          : errorStatusCode ?? this.errorStatusCode,
     );
   }
 }

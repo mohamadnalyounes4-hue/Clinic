@@ -11,6 +11,7 @@ import '../../Models/points_model.dart';
 import '../../core/Error/exceptions.dart';
 import '../../core/localization/app_localizations.dart';
 import '../../core/theme/nabd_colors.dart';
+import '../../core/time/clinic_clock.dart';
 
 class BookingDetailScreen extends StatefulWidget {
   final DoctorModel doctor;
@@ -30,6 +31,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
   bool _isScheduleLoading = true;
   String? _scheduleError;
   List<DoctorAvailabilitySlotModel> _availabilitySlots = const [];
+  List<Map<String, dynamic>> _days = const [];
 
   // ── النقاط المستخدمة كخصم ──
   int _pointsToRedeem = 0;
@@ -45,24 +47,42 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
     _loadDoctorSchedule();
   }
 
-  Future<void> _loadDoctorSchedule() async {
+  @override
+  void didUpdateWidget(covariant BookingDetailScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.doctor.id != widget.doctor.id) {
+      _loadDoctorSchedule();
+    }
+  }
+
+  Future<void> _loadDoctorSchedule({DateTime? preferredDate}) async {
+    if (mounted) {
+      setState(() {
+        _isScheduleLoading = true;
+        _scheduleError = null;
+        _selectedTime = '';
+      });
+    }
     try {
+      final from = ClinicClock.today();
       final dates = await context
           .read<AppointmentCubit>()
           .getDoctorAvailableDates(
             doctorId: widget.doctor.id,
-            from: _days.first['date'] as DateTime,
-            to: _days.last['date'] as DateTime,
+            from: from,
+            to: from.add(const Duration(days: 61)),
           );
-      final byDate = {for (final item in dates) _dateKey(item.date): item};
-      for (final day in _days) {
-        final availability = byDate[_dateKey(day['date'] as DateTime)];
-        day['isAvailable'] = availability?.isAvailable ?? false;
-        day['availableSlots'] = availability?.availableSlots ?? 0;
-      }
-      final firstAvailable = _days.indexWhere(
-        (day) => day['isAvailable'] == true,
-      );
+      final availableDays = dates
+          .where((item) => item.isAvailable && item.availableSlots > 0)
+          .map(
+            (item) => <String, dynamic>{
+              'name': _weekdayName(item.date.weekday),
+              'num': item.date.day.toString().padLeft(2, '0'),
+              'date': item.date,
+              'availableSlots': item.availableSlots,
+            },
+          )
+          .toList(growable: false);
       String? bookingBlockReason;
       for (final item in dates) {
         if (item.bookingBlockReason != null) {
@@ -71,10 +91,27 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
         }
       }
       if (!mounted) return;
+      final preferredKey = preferredDate == null
+          ? null
+          : _dateKey(preferredDate);
+      final preferredIndex = preferredKey == null
+          ? -1
+          : availableDays.indexWhere(
+              (day) => _dateKey(day['date'] as DateTime) == preferredKey,
+            );
       setState(() {
-        _selectedDayIndex = firstAvailable < 0 ? 0 : firstAvailable;
-        _scheduleError = _bookingBlockMessage(bookingBlockReason);
+        _days = availableDays;
+        _selectedDayIndex = preferredIndex >= 0 ? preferredIndex : 0;
+        _scheduleError = availableDays.isEmpty
+            ? _bookingBlockMessage(bookingBlockReason) ??
+                  'لا توجد أيام متاحة للحجز خلال الفترة الحالية'
+            : _bookingBlockMessage(bookingBlockReason);
+        if (availableDays.isEmpty) {
+          _availabilitySlots = const [];
+          _isScheduleLoading = false;
+        }
       });
+      if (availableDays.isEmpty) return;
       await _loadAvailabilityForSelectedDate();
     } catch (_) {
       if (!mounted) return;
@@ -133,7 +170,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
   }
 
   bool _isTimeInPast(DateTime day, String time) {
-    final now = DateTime.now();
+    final now = ClinicClock.now();
     final isToday =
         day.year == now.year && day.month == now.month && day.day == now.day;
     if (!isToday) return false;
@@ -174,21 +211,6 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
         ? ''
         : availableTimes.first;
   }
-
-  // ── بيانات الأيام ──
-  // بنعرض أقرب 6 أيام حقيقية من تاريخ اليوم. اختيار الوقت حر بالكامل
-  // (مفيش ربط بدوام الطبيب حاليًا)، والباك هو اللي يرفض أي تعارض فعلي
-  // وقت تأكيد الحجز.
-  late final List<Map<String, dynamic>> _days = List.generate(14, (i) {
-    final date = DateTime.now().add(Duration(days: i));
-    return {
-      'name': _weekdayName(date.weekday),
-      'num': date.day.toString().padLeft(2, '0'),
-      'date': date,
-      'isAvailable': false,
-      'availableSlots': 0,
-    };
-  });
 
   String _weekdayName(int weekday) {
     const names = {
@@ -254,9 +276,13 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
   List<Map<String, dynamic>> get _currentSlots =>
       _isMorning ? _morningSlots : _eveningSlots;
 
-  String get _selectedDayName => _days[_selectedDayIndex]['name'] as String;
-  String get _selectedDayNum => _days[_selectedDayIndex]['num'] as String;
-  DateTime get _selectedDate => _days[_selectedDayIndex]['date'] as DateTime;
+  String get _selectedDayName =>
+      _days.isEmpty ? '' : _days[_selectedDayIndex]['name'] as String;
+  String get _selectedDayNum =>
+      _days.isEmpty ? '' : _days[_selectedDayIndex]['num'] as String;
+  DateTime get _selectedDate => _days.isEmpty
+      ? ClinicClock.today()
+      : _days[_selectedDayIndex]['date'] as DateTime;
 
   @override
   Widget build(BuildContext context) {
@@ -883,79 +909,129 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
         ),
         const SizedBox(height: 16),
 
-        // أيام الأسبوع
-        LayoutBuilder(
-          builder: (context, constraints) {
-            return SizedBox(
-              height: 82,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: _days.length,
-                separatorBuilder: (_, _) => const SizedBox(width: 8),
-                itemBuilder: (context, index) {
-                  // عكس الترتيب لـ RTL
-                  final i = _days.length - 1 - index;
-                  final isSelected = _selectedDayIndex == i;
-                  final isAvailable = _days[i]['isAvailable'] == true;
-                  return GestureDetector(
-                    onTap: !isAvailable || _isScheduleLoading
-                        ? null
-                        : () {
-                            setState(() => _selectedDayIndex = i);
-                            _loadAvailabilityForSelectedDate();
-                          },
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      width: 58,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      decoration: BoxDecoration(
-                        color: isSelected && isAvailable
-                            ? NabadColors.primary
-                            : NabadColors.white,
-                        borderRadius: BorderRadius.circular(50),
-                        boxShadow: isSelected
-                            ? []
-                            : [
-                                BoxShadow(
-                                  color: NabadColors.primary.withOpacity(0.06),
-                                  blurRadius: 8,
-                                ),
-                              ],
-                      ),
-                      child: Column(
-                        children: [
-                          Text(
-                            context.tr(_days[i]['name'] as String),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: isSelected && isAvailable
-                                  ? NabadColors.white
-                                  : NabadColors.mutedText,
+        // السيرفر يعيد الأيام المتاحة وعدد فتراتها؛ لا نحسب الدوام محلياً.
+        if (_isScheduleLoading && _days.isEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 22),
+            child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+          )
+        else if (_days.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: NabadColors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: NabadColors.divider),
+            ),
+            child: Column(
+              children: [
+                Text(
+                  context.tr(
+                    _scheduleError ??
+                        'لا توجد أيام متاحة للحجز خلال الفترة الحالية',
+                  ),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: NabadColors.mutedText),
+                ),
+                const SizedBox(height: 8),
+                TextButton.icon(
+                  onPressed: () => _loadDoctorSchedule(),
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: Text(context.tr('إعادة المحاولة')),
+                ),
+              ],
+            ),
+          )
+        else
+          LayoutBuilder(
+            builder: (context, constraints) {
+              return SizedBox(
+                height: 102,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: _days.length,
+                  separatorBuilder: (_, _) => const SizedBox(width: 8),
+                  itemBuilder: (context, index) {
+                    // عكس الترتيب لـ RTL
+                    final i = _days.length - 1 - index;
+                    final isSelected = _selectedDayIndex == i;
+                    const isAvailable = true;
+                    return GestureDetector(
+                      onTap: !isAvailable || _isScheduleLoading
+                          ? null
+                          : () {
+                              setState(() => _selectedDayIndex = i);
+                              _loadAvailabilityForSelectedDate();
+                            },
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        width: 58,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        decoration: BoxDecoration(
+                          color: isSelected && isAvailable
+                              ? NabadColors.primary
+                              : NabadColors.white,
+                          borderRadius: BorderRadius.circular(50),
+                          boxShadow: isSelected
+                              ? []
+                              : [
+                                  BoxShadow(
+                                    color: NabadColors.primary.withOpacity(
+                                      0.06,
+                                    ),
+                                    blurRadius: 8,
+                                  ),
+                                ],
+                        ),
+                        child: Column(
+                          children: [
+                            Text(
+                              context.tr(_days[i]['name'] as String),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: isSelected && isAvailable
+                                    ? NabadColors.white
+                                    : NabadColors.mutedText,
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            _days[i]['num'] as String,
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w800,
-                              color: isSelected && isAvailable
-                                  ? NabadColors.white
-                                  : NabadColors.darkText,
+                            const SizedBox(height: 6),
+                            Text(
+                              _days[i]['num'] as String,
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
+                                color: isSelected && isAvailable
+                                    ? NabadColors.white
+                                    : NabadColors.darkText,
+                              ),
                             ),
-                          ),
-                        ],
+                            const SizedBox(height: 3),
+                            Text(
+                              context.tr('{count} وقت متاح', {
+                                'count': _days[i]['availableSlots'],
+                              }),
+                              maxLines: 1,
+                              style: TextStyle(
+                                fontSize: 8.5,
+                                fontWeight: FontWeight.w700,
+                                color: isSelected
+                                    ? NabadColors.white.withAlpha(220)
+                                    : NabadColors.primary,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  );
-                },
-              ),
-            );
-          },
-        ),
+                    );
+                  },
+                ),
+              );
+            },
+          ),
       ],
     );
   }
@@ -1028,14 +1104,26 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: NabadColors.divider),
             ),
-            child: Text(
-              context.tr(_scheduleError ?? 'لا توجد فترات متاحة لهذا اليوم'),
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: NabadColors.mutedText,
-              ),
+            child: Column(
+              children: [
+                Text(
+                  context.tr(
+                    _scheduleError ?? 'لا توجد فترات متاحة لهذا اليوم',
+                  ),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: NabadColors.mutedText,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextButton.icon(
+                  onPressed: _loadAvailabilityForSelectedDate,
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: Text(context.tr('إعادة المحاولة')),
+                ),
+              ],
             ),
           )
         else
@@ -1435,17 +1523,33 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
         if (!mounted) return;
         setState(() => _serverPreview = preview);
       }
-      await context.read<AppointmentCubit>().bookAppointment(
-        doctorId: widget.doctor.id,
-        date: _selectedDate,
-        time: _selectedTime,
-        pointsToRedeem: _pointsToRedeem,
-      );
+      final bookedDate = _selectedDate;
+      final bookedTime = _selectedTime;
+      final appointment = await context
+          .read<AppointmentCubit>()
+          .bookAppointment(
+            doctorId: widget.doctor.id,
+            date: bookedDate,
+            time: bookedTime,
+            pointsToRedeem: _pointsToRedeem,
+          );
       if (!mounted) return;
-      _showSuccessDialog();
+      await _loadDoctorSchedule(preferredDate: bookedDate);
+      if (!mounted) return;
+      _showSuccessDialog(
+        bookedDate: bookedDate,
+        bookedTime: bookedTime,
+        pendingApproval: appointment.isPendingApproval,
+      );
     } on ServerExceptions catch (e) {
       if (!mounted) return;
-      _loadAvailabilityForSelectedDate();
+      final failedDate = _selectedDate;
+      if (e.statusCode == 422) {
+        await _loadDoctorSchedule(preferredDate: failedDate);
+      } else {
+        await _loadAvailabilityForSelectedDate();
+      }
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(e.errModel.errorMessage),
@@ -1467,9 +1571,14 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
     }
   }
 
-  void _showSuccessDialog() {
-    final period = context.tr(_isMorning ? 'صباحاً' : 'مساءً');
-    final monthLabel = context.tr(_monthName(_selectedDate.month));
+  void _showSuccessDialog({
+    required DateTime bookedDate,
+    required String bookedTime,
+    required bool pendingApproval,
+  }) {
+    final bookedMinutes = _timeToMinutes(bookedTime) ?? 0;
+    final period = context.tr(bookedMinutes < 12 * 60 ? 'صباحاً' : 'مساءً');
+    final monthLabel = context.tr(_monthName(bookedDate.month));
     showDialog(
       context: context,
       builder: (_) => Directionality(
@@ -1508,12 +1617,15 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
               const SizedBox(height: 8),
               Text(
                 context.tr(
-                  'طلبك مع {doctor}\n{date} الساعة {time} {period}\nبانتظار موافقة السكرتاريا',
+                  pendingApproval
+                      ? 'طلبك مع {doctor}\n{date} الساعة {time} {period}\nبانتظار موافقة السكرتاريا'
+                      : 'تم تأكيد موعدك مع {doctor}\n{date} الساعة {time} {period}',
                   {
                     'doctor':
                         '${context.l10n.isArabic ? 'د.' : 'Dr.'} ${widget.doctor.fullName}',
-                    'date': '$_selectedDayNum $monthLabel',
-                    'time': _selectedTime,
+                    'date':
+                        '${bookedDate.day.toString().padLeft(2, '0')} $monthLabel',
+                    'time': bookedTime,
                     'period': period,
                   },
                 ),

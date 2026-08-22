@@ -4,11 +4,18 @@ import 'package:nabad/Repositories/user_repository.dart';
 import 'package:nabad/core/Api/end_points.dart';
 import 'package:nabad/core/Cache/cache_helper.dart';
 import 'package:nabad/core/Error/exceptions.dart';
+import 'package:nabad/core/notifications/push_notification_service.dart';
 
 class UserCubit extends Cubit<UserState> {
   final UserRepository userRepository;
+  final PushNotificationService pushNotificationService;
 
-  UserCubit({required this.userRepository}) : super(UserInitial());
+  UserCubit({
+    required this.userRepository,
+    PushNotificationService? pushNotificationService,
+  }) : pushNotificationService =
+           pushNotificationService ?? PushNotificationService.instance,
+       super(UserInitial());
 
   // Register
   Future<void> register({
@@ -45,13 +52,16 @@ class UserCubit extends Cubit<UserState> {
       await CacheHelper.saveData(key: ApiKey.token, value: result.token);
       await CacheHelper.saveData(key: ApiKey.id, value: result.user.id);
       await CacheHelper.saveData(key: ApiKey.role, value: result.user.role);
+      await pushNotificationService.registerForAuthenticatedUser();
       if (result.user.role == 'doctor') {
         emit(LoginSuccessDoctor());
       } else {
         emit(LoginSuccessPatient());
       }
     } on ServerExceptions catch (e) {
-      emit(LoginError(message: e.errModel.errorMessage, statusCode: e.statusCode));
+      emit(
+        LoginError(message: e.errModel.errorMessage, statusCode: e.statusCode),
+      );
     }
   }
 
@@ -102,6 +112,7 @@ class UserCubit extends Cubit<UserState> {
   Future<void> logout() async {
     emit(LogoutLoading());
     try {
+      await pushNotificationService.unregisterCurrentToken();
       await userRepository.logout();
       await CacheHelper.clearData();
       emit(LogoutSuccess());
